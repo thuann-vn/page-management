@@ -33,6 +33,8 @@ const homeController = require('./controllers/home');
 const userController = require('./controllers/user');
 const apiController = require('./controllers/api');
 const contactController = require('./controllers/contact');
+const facebookController = require('./controllers/facebook');
+const facebookApiController = require('./controllers/api/facebook');
 
 /**
  * API keys and Passport configuration.
@@ -182,6 +184,12 @@ app.get('/api/google/drive', passportConfig.isAuthenticated, passportConfig.isAu
 app.get('/api/chart', apiController.getChart);
 app.get('/api/google/sheets', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getGoogleSheets);
 app.get('/api/quickbooks', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getQuickbooks);
+
+// Facebook pages
+app.get('/messages', facebookController.messages);
+app.get('/api/facebook/threads', passportConfig.isAuthenticated, passportConfig.isAuthorized, facebookApiController.threads);
+// app.get('/api/facebook/page', passportConfig.isAuthenticated, passportConfig.isAuthorized, facebookController.messages);
+
 
 /**
  * OAuth authentication routes. (Sign in)

@@ -1,0 +1,32 @@
+extends ../layout
+
+block content
+  .chat-container
+    .contacts
+      //- each thread in conversations
+      //-   .contact
+      //-     .pic.rogers
+      //-     .badge #{unread_count}
+      //-     .name #{thread.user.name}
+      //-     .message #{thread.snippet}
+    .chat
+      .contact.bar
+        .pic.stark
+        .name Tony Stark
+        .seen Today at 12:56
+      #chat.messages
+        .time Today at 11:41
+        .message.parker Hey, man! What's up, Mr Stark? 👋
+        .message.stark Kid, where'd you come from? 
+        .message.parker Field trip! 🤣
+        .message.parker Uh, what is this guy's problem, Mr. Stark? 🤔
+        .message.stark Uh, he's from space, he came here to steal a necklace from a wizard.
+        .message.stark
+          .typing.typing-1
+          .typing.typing-2
+          .typing.typing-3
+      .input
+        i.fas.fa-camera
+        i.far.fa-laugh-beam
+        input
+        i.fas.fa-microphone

@@ -121,6 +121,7 @@ passport.use(new SnapchatStrategy({
 /**
  * Sign in with Facebook.
  */
+passport.authenticate('facebook', { scope: ['user_friends', 'manage_pages'] });
 passport.use(new FacebookStrategy({
   clientID: process.env.FACEBOOK_ID,
   clientSecret: process.env.FACEBOOK_SECRET,
