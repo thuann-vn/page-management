@@ -122,6 +122,7 @@ app.post('/api/upload', upload.single('myFile'), lusca({ csrf: true }), apiContr
 // Facebook pages
 app.get('/api/facebook/pages', passportConfig.isJwtAuthenticated, facebookController.pages);
 app.get('/api/facebook/threads', passportConfig.isJwtAuthenticated, facebookController.threads);
+app.get('/api/facebook/messages', passportConfig.isJwtAuthenticated, facebookController.messages);
 // app.get('/api/facebook/page', passportConfig.isAuthenticated, passportConfig.isAuthorized, facebookController.messages);
 
 

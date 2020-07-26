@@ -8,7 +8,6 @@ const jwt = require('jsonwebtoken')
  */
 exports.facebookLogin = async (req, res, done) => {
     const { profile } = req.body;
-    console.log(profile);
     if (req.user) {
         User.findOne({ facebook: profile.id }, (err, existingUser) => {
             if (err) {
