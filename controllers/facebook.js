@@ -91,7 +91,7 @@ exports.postMessage = async (req, res, next) => {
   const message = req.body.message;
   const pageId = '106261714466963';
 
-  if(!message){
+  if(!message || !thread){
     return res.json(false);
   }
   
