@@ -66,6 +66,7 @@ exports.threads = async (req, res, next) => {
 exports.messages = async (req, res, next) => {
   // const pageToken = req.body.access_token;
   const threadId = req.query.threadId;
+  const nextId = req.query.nextId;
   const pageId = '106261714466963';
   
   var token = await this.getPageToken(pageId);
@@ -74,11 +75,44 @@ exports.messages = async (req, res, next) => {
     return res.json({success: false});
   }
   graph.setAccessToken(token);
-  const messages = await this.getThreadMessages(threadId);
+  const messages = await this.getThreadMessages(threadId, nextId);
 
   res.json(messages);
 };
 
+
+/**
+ * GET /api/facebook/threads
+ * Facebook API example.
+ */
+exports.postMessage = async (req, res, next) => {
+  // const pageToken = req.body.access_token;
+  const thread = req.body.thread;
+  const message = req.body.message;
+  const pageId = '106261714466963';
+
+  if(!message){
+    return res.json(false);
+  }
+  
+  var token = await this.getPageToken(pageId);
+  if(!token){
+    return res.json({success: false});
+  }
+  graph.setAccessToken(token);
+
+  var messageBody = {
+    "recipient": {
+      "id": thread.user.id
+    },
+    "message": {
+      "text": message
+    }
+  }
+  const result = await this.postThreadMessage(pageId, messageBody);
+
+  res.json(result);
+};
 
 exports.getPageAccessToken = async (pageToken) => {
   var extendAccessTokenParams = {
@@ -134,9 +168,9 @@ exports.getFacebookToken = (req) => {
   graph.setAccessToken(token.accessToken);
 }
 
-exports.getThreadMessages = async (threadId) => {
+exports.getThreadMessages = async (threadId, nextId = null) => {
   var promise = new Promise((resolve) => {
-    graph.get(`${threadId}/messages?fields=sticker,message,from,created_time,tags,to,attachments,shares`, (err, result) => {
+    graph.get(`${nextId ? nextId : threadId}/messages?fields=sticker,message,from,created_time,tags,to,attachments,shares`, (err, result) => {
       if (err) {
         resolve(null);
       }
@@ -158,4 +192,21 @@ exports.getPageToken = async (pageId) => {
    }
 
    return page.access_token;
+}
+
+
+exports.postThreadMessage = async (pageId, message = null) => {
+  if(message){
+    var promise = new Promise((resolve) => {
+      graph.post(`${pageId}/messages`, message, (err, result) => {
+        if (err) {
+          resolve(err);
+          return;
+        }
+        resolve(result);
+      });
+    })
+  
+    return promise;
+  }
 }
