@@ -140,6 +140,9 @@ exports.getThreadMessages = async (threadId) => {
       if (err) {
         resolve(null);
       }
+      if(result.data){
+        result.data = result.data.reverse();
+      }
       resolve(result);
     });
   })
