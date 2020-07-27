@@ -2,6 +2,7 @@ const graph = require('fbgraph');
 const Page = require('../models/Pages');
 const WebHook = require('../models/WebHook');
 const { pusher } = require('../services/pusher');
+const User = require('../models/User');
 
 
 exports.verifyWebhook = async (req, res) => {
@@ -53,9 +54,12 @@ exports.receivedWebhook = async (req, res) => {
 
         // Get the sender PSID
         let sender_psid = webhook_event.sender.id;
-        console.log('Sender ID: ' + sender_psid);
-        
-        pusher.trigger('notifications', 'message.new', webhook_event, req.user.id);
+        Page.findOne({id: {$in: [webhook_event.sender.id, webhook_event.recipient.id]}}, function(err, page){
+          if(!err && !page){
+            pusher.trigger('notifications', 'message.new', webhook_event, page.userId);
+          }
+        });
+
         // Check if the event is a message or postback and
         // pass the event to the appropriate handler function
         if (webhook_event.message) {
