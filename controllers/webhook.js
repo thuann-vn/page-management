@@ -4,6 +4,9 @@ const WebHook = require('../models/WebHook');
 const { pusher } = require('../services/pusher');
 const User = require('../models/User');
 const Message = require('../models/Messages');
+const { Facebook } = require('../services/facebook');
+const { threads } = require('./facebook');
+const Thread = require('../models/Threads');
 
 exports.verifyWebhook = async (req, res) => {
   /** UPDATE YOUR VERIFY TOKEN **/
@@ -56,17 +59,38 @@ exports.receivedWebhook = async (req, res) => {
         let sender_psid = webhook_event.sender.id;
         Page.findOne({id: {$in: [webhook_event.sender.id, webhook_event.recipient.id]}}, function(err, page){
           if(!err && page){
-            graph.setAccessToken(page.access_token);
-            graph.get(`${webhook_event.message.mid}?fields=sticker,message,from,created_time,tags,to,attachments,shares`, function(error, result){
-              pusher.trigger('notifications', 'message.new', result);
+            Facebook.getThreadByUserId(page.access_token, page.id == webhook_event.recipient.id ? webhook_event.sender.id: webhook_event.recipient.id).then(function(thread){
+              //Check if thread is existed
+              Thread.findOne({id: thread.id}, function(err, data){
+                  if(err || !data){
+                    thread.page_id = page.id;
+                    Thread.create({
+                      ...thread
+                    });
+                  }else{
+                    data.updated_time = thread.updated_time;
+                    data.snippet = thread.snippet;
+                    data.save();
+                  }
+              })
               
-              Message.create({
-                ...result,
-                pageId: page.id
-              }, function(err){
-                if(err){
-                  console.error(err);
-                }
+              Facebook.getMessageById(page.access_token, webhook_event.message.mid).then(function(message){
+                message.thread_id = thread.id;
+                message.page_id = page.id;
+                pusher.trigger('notifications', 'message.new', message);
+
+
+                Thread.findOne({id: message.id}, function(err, data){
+                  if(err || !data){
+                    Message.create({
+                      ...message
+                    }, function(err){
+                      if(err){
+                        console.error(err);
+                      }
+                    })
+                  }
+              })
               })
             })
           }
