@@ -47,8 +47,11 @@ exports.receivedWebhook = async (req, res) => {
     body.entry.forEach(function (entry) {
 
       // Gets the body of the webhook event
-      let webhook_event = entry.messaging[0];
       if(entry.messaging && entry.messaging.length){
+        let webhook_event = entry.messaging[0];
+        if(!webhook_event.message || !webhook_event.message.mid){
+          res.status(200).send('INVALID');
+        }
         // Get the sender PSID
         let sender_psid = webhook_event.sender.id;
         Page.findOne({id: {$in: [webhook_event.sender.id, webhook_event.recipient.id]}}, function(err, page){
