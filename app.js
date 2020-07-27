@@ -40,6 +40,7 @@ const facebookController = require('./controllers/facebook');
  * API keys and Passport configuration.
  */
 const passportConfig = require('./config/passport');
+const WebHook = require('./models/WebHook');
 
 /**
  * Create Express server.
@@ -119,15 +120,17 @@ app.post('/webhook', (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
 
+  const webHook = new WebHook();
+  webHook.body = body;
+  webHook.save();
+
   // Check the webhook event is from a Page subscription
   if (body.object === 'page') {
-
     body.entry.forEach(function(entry) {
 
       // Gets the body of the webhook event
       let webhook_event = entry.messaging[0];
       console.log(webhook_event);
-
 
       // Get the sender PSID
       let sender_psid = webhook_event.sender.id;
