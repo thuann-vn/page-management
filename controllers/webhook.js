@@ -54,6 +54,7 @@ exports.receivedWebhook = async (req, res) => {
         let webhook_event = entry.messaging[0];
         if(!webhook_event.message || !webhook_event.message.mid){
           res.status(200).send('INVALID');
+          return;
         }
         // Get the sender PSID
         let sender_psid = webhook_event.sender.id;
