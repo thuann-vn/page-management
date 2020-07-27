@@ -102,14 +102,11 @@ exports.postMessage = async (req, res, next) => {
   graph.setAccessToken(token);
 
   var messageBody = {
-    "recipient": {
-      "id": thread.user.id
-    },
     "message": {
       "text": message
     }
   }
-  const result = await this.postThreadMessage(pageId, messageBody);
+  const result = await this.postThreadMessage(thread.id, messageBody);
 
   res.json(result);
 };
@@ -195,10 +192,10 @@ exports.getPageToken = async (pageId) => {
 }
 
 
-exports.postThreadMessage = async (pageId, message = null) => {
+exports.postThreadMessage = async (threadId, message = null) => {
   if(message){
     var promise = new Promise((resolve) => {
-      graph.post(`${pageId}/messages`, message, (err, result) => {
+      graph.post(`${threadId}/messages`, message, (err, result) => {
         if (err) {
           resolve(err);
           return;
