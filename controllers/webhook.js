@@ -71,6 +71,7 @@ exports.receivedWebhook = async (req, res) => {
                   }else{
                     data.updated_time = thread.updated_time;
                     data.snippet = thread.snippet;
+                    data.unread_count = thread.unread_count;
                     data.save();
                   }
               })
@@ -78,7 +79,7 @@ exports.receivedWebhook = async (req, res) => {
               Facebook.getMessageById(page.access_token, webhook_event.message.mid).then(function(message){
                 message.thread_id = thread.id;
                 message.page_id = page.id;
-                pusher.trigger('notifications', 'message.new', message);
+                pusher.trigger('notifications', 'message.new', {thread, message});
 
 
                 Thread.findOne({id: message.id}, function(err, data){
