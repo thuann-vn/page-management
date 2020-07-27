@@ -13,5 +13,5 @@ const threadSchema = new mongoose.Schema({
   shares: {},
 }, { timestamps: false });
 
-const User = mongoose.model('Threads', threadSchema);
-module.exports = User;
+const Thread = mongoose.model('Threads', threadSchema);
+module.exports = Thread;

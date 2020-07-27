@@ -4,7 +4,6 @@ const WebHook = require('../models/WebHook');
 const { pusher } = require('../services/pusher');
 const User = require('../models/User');
 
-
 exports.verifyWebhook = async (req, res) => {
   /** UPDATE YOUR VERIFY TOKEN **/
   const VERIFY_TOKEN = "THUANGUYEN";
@@ -32,7 +31,6 @@ exports.verifyWebhook = async (req, res) => {
 }
 
 exports.receivedWebhook = async (req, res) => {
-
   // Parse the request body from the POST
   let body = req.body;
 
@@ -50,13 +48,14 @@ exports.receivedWebhook = async (req, res) => {
       // Gets the body of the webhook event
       let webhook_event = entry.messaging[0];
       if(entry.messaging && entry.messaging.length){
-        console.log(webhook_event);
-
         // Get the sender PSID
         let sender_psid = webhook_event.sender.id;
         Page.findOne({id: {$in: [webhook_event.sender.id, webhook_event.recipient.id]}}, function(err, page){
-          if(!err && !page){
-            pusher.trigger('notifications', 'message.new', webhook_event, page.userId);
+          if(!err && page){
+            graph.setAccessToken(page.access_token);
+            graph.get(`${webhook_event.message.mid}?fields=sticker,message,from,created_time,tags,to,attachments,shares`, function(error, result){
+              pusher.trigger('notifications', 'message.new', result);
+            })
           }
         });
 
