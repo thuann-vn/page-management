@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
+  id: String,
   pageId: String,
   from: Object,
   to: Object,
   unread_count: Number,
-  participants: Array,
   is_subscribed: Boolean,
   snippet: String,
-  updated_time: Date
+  created_time: String
 }, { timestamps: true });
 
-const User = mongoose.model('Messages', messageSchema);
+const Message = mongoose.model('Messages', messageSchema);
 
-module.exports = User;
+module.exports = Message;

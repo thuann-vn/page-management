@@ -3,6 +3,7 @@ const Page = require('../models/Pages');
 const WebHook = require('../models/WebHook');
 const { pusher } = require('../services/pusher');
 const User = require('../models/User');
+const Message = require('../models/Messages');
 
 exports.verifyWebhook = async (req, res) => {
   /** UPDATE YOUR VERIFY TOKEN **/
@@ -55,6 +56,15 @@ exports.receivedWebhook = async (req, res) => {
             graph.setAccessToken(page.access_token);
             graph.get(`${webhook_event.message.mid}?fields=sticker,message,from,created_time,tags,to,attachments,shares`, function(error, result){
               pusher.trigger('notifications', 'message.new', result);
+              
+              Message.create({
+                ...result,
+                pageId: page.id
+              }, function(err){
+                if(err){
+                  console.error(err);
+                }
+              })
             })
           }
         });

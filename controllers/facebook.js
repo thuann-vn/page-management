@@ -1,5 +1,6 @@
 const graph = require('fbgraph');
 const Page = require('../models/Pages');
+const { urlencoded } = require('body-parser');
 
 exports.pages = async (req, res) => {
   const token = req.user.tokens.find((token) => token.kind === 'facebook');
@@ -99,15 +100,16 @@ exports.postMessage = async (req, res, next) => {
   if(!token){
     return res.json({success: false});
   }
-  graph.setAccessToken(token);
-
+  graph.setAccessToken(token);  
   var messageBody = {
+    "recipient": {
+      "id": thread.user.id
+    },
     "message": {
       "text": message
     }
   }
-  const result = await this.postThreadMessage(thread.id, messageBody);
-
+  const result = await this.postThreadMessage(pageId, messageBody);
   res.json(result);
 };
 
@@ -191,11 +193,10 @@ exports.getPageToken = async (pageId) => {
    return page.access_token;
 }
 
-
-exports.postThreadMessage = async (threadId, message = null) => {
+exports.postThreadMessage = async (pageId, message = null) => {
   if(message){
     var promise = new Promise((resolve) => {
-      graph.post(`${threadId}/messages`, message, (err, result) => {
+      graph.post(`${pageId}/messages`, message, (err, result) => {
         if (err) {
           resolve(err);
           return;
