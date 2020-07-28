@@ -1,6 +1,7 @@
 const graph = require('fbgraph');
 const Page = require('../models/Pages');
 const { urlencoded } = require('body-parser');
+const Thread = require('../models/Threads');
 
 exports.pages = async (req, res) => {
   const token = req.user.tokens.find((token) => token.kind === 'facebook');
@@ -34,24 +35,52 @@ exports.setupPage = async (req, res) => {
  * Facebook API example.
  */
 exports.threads = async (req, res, next) => {
+  var self = this;
   // const pageToken = req.body.access_token;
   // const pageId = req.body.id;
   const pageId = '106261714466963';
 
+  //Try to get from database
+  var isDBReturned = false;
+  Thread.find({page_id: pageId}, function(err, data){
+    if(data && data.length){
+      isDBReturned = true;
+      res.json(data);
+    }
+  })
+
+  if(isDBReturned){
+    return;
+  }
+
   //Get page token
   var token = await this.getPageToken(pageId);
-  console.log(token);
   if(!token){
     return res.json({success: false});
   }
   graph.setAccessToken(token);
   const conversations = await this.getConversations(pageId);
-
   var threads = [];
   if(conversations){
     for (var i = 0; i < conversations.length; i++) {
       var threadData = await this.getThread(conversations[i].id);
       threadData.user = { ...threadData.participants.data[0] };
+      const avatar = self.getThreadAvatar(threadData.user.id);
+      threadData.avatar = avatar;
+      threadData.page_id = pageId;
+      Thread.findOne({id: threadData.id}, function(err, data){
+        if(data){
+          data.page_id = pageId;
+          data.avatar = avatar;
+          data.snippet = threadData.snippet;
+          data.updated_time = threadData.updated_time;
+          data.save();
+        }else{
+          Thread.create(threadData, function(err, data){
+          });
+        }
+      })
+
       delete (threadData.participants);
       threads.push(threadData);
     }
@@ -207,4 +236,8 @@ exports.postThreadMessage = async (pageId, message = null) => {
   
     return promise;
   }
+}
+
+exports.getThreadAvatar = (userId) => {
+  return `https://graph.facebook.com/${userId}?fields=picture.width(720).height(720)&redirect=false`
 }
