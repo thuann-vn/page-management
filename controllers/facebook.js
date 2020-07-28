@@ -65,8 +65,9 @@ exports.threads = async (req, res, next) => {
     for (var i = 0; i < conversations.length; i++) {
       var threadData = await this.getThread(conversations[i].id);
       threadData.user = { ...threadData.participants.data[0] };
-      const avatar = self.getThreadAvatar(threadData.user.id);
+      const avatar = await self.getThreadAvatar(threadData.user.id);
       threadData.avatar = avatar;
+      console.log(avatar);
       threadData.page_id = pageId;
       Thread.findOne({id: threadData.id}, function(err, data){
         if(data){
@@ -239,5 +240,15 @@ exports.postThreadMessage = async (pageId, message = null) => {
 }
 
 exports.getThreadAvatar = (userId) => {
-  return `https://graph.facebook.com/${userId}?fields=picture.width(720).height(720)&redirect=false`
+  var promise = new Promise((resolve) => {
+    graph.get(`${userId}`, (err, result) => {
+      if (err) {
+        resolve('');
+        return;
+      }
+      resolve(result.profile_pic);
+    });
+  })
+
+  return promise;
 }
