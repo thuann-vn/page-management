@@ -2,6 +2,8 @@ const graph = require('fbgraph');
 const Page = require('../models/Pages');
 const { urlencoded } = require('body-parser');
 const Thread = require('../models/Threads');
+const { pusher } = require('../services/pusher');
+const Message = require('../models/Messages');
 
 exports.pages = async (req, res) => {
   const token = req.user.tokens.find((token) => token.kind === 'facebook');
@@ -42,16 +44,15 @@ exports.threads = async (req, res, next) => {
 
   //Try to get from database
   var isDBReturned = false;
-  Thread.find({page_id: pageId}, function(err, data){
+  Thread.find({page_id: pageId}).sort({updated_time: -1}).exec(function(err, data){
+    console.log(data);
     if(data && data.length){
       isDBReturned = true;
       res.json(data);
     }
   })
 
-  if(isDBReturned){
-    return;
-  }
+  //Continue to get token
 
   //Get page token
   var token = await this.getPageToken(pageId);
@@ -67,17 +68,26 @@ exports.threads = async (req, res, next) => {
       threadData.user = { ...threadData.participants.data[0] };
       const avatar = await self.getThreadAvatar(threadData.user.id);
       threadData.avatar = avatar;
-      console.log(avatar);
       threadData.page_id = pageId;
       Thread.findOne({id: threadData.id}, function(err, data){
         if(data){
-          data.page_id = pageId;
-          data.avatar = avatar;
-          data.snippet = threadData.snippet;
-          data.updated_time = threadData.updated_time;
-          data.save();
+          if(data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time){
+            data.page_id = pageId;
+            data.avatar = avatar;
+            data.snippet = threadData.snippet;
+            data.updated_time = threadData.updated_time;
+            data.save();
+            //Push update
+            if(isDBReturned){
+              pusher.trigger('notifications', 'thread.update', {data});
+            }
+          }
         }else{
           Thread.create(threadData, function(err, data){
+            //Push update
+            if(isDBReturned){
+              pusher.trigger('notifications', 'thread.new', {data});
+            }
           });
         }
       })
@@ -87,7 +97,9 @@ exports.threads = async (req, res, next) => {
     }
   }
 
-  res.json(threads);
+  if(!isDBReturned){
+    res.json(threads);
+  }
 };
 
 /**
@@ -100,15 +112,37 @@ exports.messages = async (req, res, next) => {
   const nextId = req.query.nextId;
   const pageId = '106261714466963';
   
+  //Try to get from database
+  var isDBReturned = false;
+  try {
+    var data = await Message.find({thread_id: threadId}).sort({updated_time: -1}).exec();
+    if(data && data.length){
+      isDBReturned = true;
+      res.json({data: data});
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
   var token = await this.getPageToken(pageId);
-  console.log(token);
   if(!token){
     return res.json({success: false});
   }
   graph.setAccessToken(token);
   const messages = await this.getThreadMessages(threadId, nextId);
 
-  res.json(messages);
+  if(messages){
+    messages.forEach(message => {
+      Message.findOne({id:message.id}, function(err, data){
+        if(err || !data){
+          Message.create(message);
+        }
+      })
+    });
+  }
+
+  res.json({data: messages});
 };
 
 
@@ -201,12 +235,23 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
   var promise = new Promise((resolve) => {
     graph.get(`${nextId ? nextId : threadId}/messages?fields=sticker,message,from,created_time,tags,to,attachments,shares`, (err, result) => {
       if (err) {
-        resolve(null);
+        resolve([]);
       }
       if(result.data){
         result.data = result.data.reverse();
+
+        result.data.map(message =>{
+          message.thread_id = threadId;
+          if(message.to && message.to.data){
+            message.to = message.to.data[0]
+          }
+          if(message.tags && message.tags.data){
+            message.tags = message.tags.data
+          }
+          return message;
+        })
       }
-      resolve(result);
+      resolve(result.data);
     });
   })
 

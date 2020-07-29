@@ -68,10 +68,13 @@ exports.receivedWebhook = async (req, res) => {
                     Thread.create({
                       ...thread
                     });
+
+                    pusher.trigger('notifications', 'thread.add', {thread});
                   }else{
                     data.updated_time = thread.updated_time;
                     data.snippet = thread.snippet;
                     data.unread_count = thread.unread_count;
+                    pusher.trigger('notifications', 'thread.update', data);
                     data.save();
                   }
               })
@@ -80,7 +83,6 @@ exports.receivedWebhook = async (req, res) => {
                 message.thread_id = thread.id;
                 message.page_id = page.id;
                 pusher.trigger('notifications', 'message.new', {thread, message});
-
 
                 Thread.findOne({id: message.id}, function(err, data){
                   if(err || !data){

@@ -7,9 +7,11 @@ const messageSchema = new mongoose.Schema({
   to: Object,
   unread_count: Number,
   is_subscribed: Boolean,
-  snippet: String,
+  message: String,
   created_time: String,
-  thread_id: String
+  thread_id: String,
+  attachments: {},
+  sticker:{},
 }, { timestamps: true });
 
 const Message = mongoose.model('Messages', messageSchema);
