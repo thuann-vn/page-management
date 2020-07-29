@@ -45,15 +45,14 @@ exports.receivedWebhook = async (req, res) => {
       console.log('Save webhook failed', err);
     }
   });
+
   // Check the webhook event is from a Page subscription
   if (body.object === 'page') {
     body.entry.forEach(function (entry) {
-
       // Gets the body of the webhook event
       if(entry.messaging && entry.messaging.length){
         let webhook_event = entry.messaging[0];
         if(!webhook_event.message || !webhook_event.message.mid){
-          res.status(200).send('INVALID');
           return;
         }
         // Get the sender PSID
@@ -110,9 +109,9 @@ exports.receivedWebhook = async (req, res) => {
         }
       }
     });
+
     // Return a '200 OK' response to all events
     res.status(200).send('EVENT_RECEIVED');
-
   } else {
     // Alway return 200
     res.sendStatus(200);
