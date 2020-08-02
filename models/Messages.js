@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const messageSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   page_id: String,
@@ -10,6 +9,7 @@ const messageSchema = new mongoose.Schema({
   message: String,
   created_time: String,
   thread_id: String,
+  type: String,
   attachments: {},
   sticker:{},
 }, { timestamps: true });

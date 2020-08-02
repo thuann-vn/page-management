@@ -4,33 +4,74 @@ const { urlencoded } = require('body-parser');
 const Thread = require('../models/Threads');
 const { pusher } = require('../services/pusher');
 const Message = require('../models/Messages');
+const { MessageTypes } = require('../constants');
+const Post = require('../models/Post');
 
 exports.pages = async (req, res) => {
-  const token = req.user.tokens.find((token) => token.kind === 'facebook');
-  graph.setAccessToken(token.accessToken);
+  this.getFacebookToken(req);
   graph.get(`${req.user.facebook}/accounts`, (err, pages) => {
-    pages = pages.data;
-    pages.map(function (page) {
-      var pageData = new Page(page);
-      pageData.userId = req.user.id;
-      pageData.save();
-    })
     res.json(pages.data);
   })
 }
 
 exports.setupPage = async (req, res) => {
-  this.getFacebookToken(req);
+  const page = req.body.page;
+  pageAccessToken = await this.getPageAccessToken(page.access_token);
+  graph.setAccessToken(pageAccessToken);
 
-  graph.get(`${req.user.facebook}/accounts`, (err, pages) => {
-    pages = pages.data;
-    pages.map(function (page) {
-      var pageData = new Page(page);
-      pageData.userId = req.user.id;
-      pageData.save();
-    })
-    res.json(pages.data);
+  //Create pages
+  var pageData = new Page(pageData);
+  pageData.userId = req.user.id;
+  pageData.access_token = pageAccessToken;
+  pageData.save();
+
+  //Syncs threads
+  const conversations = await this.getConversations(pageData.id);
+  if(conversations){
+    for (var i = 0; i < conversations.length; i++) {
+      var threadData = await this.getThread(conversations[i].id);
+      threadData.user = { ...threadData.participants.data[0] };
+      const avatar = await self.getThreadAvatar(threadData.user.id);
+      threadData.avatar = avatar;
+      threadData.page_id = page.id;
+      Thread.findOne({id: threadData.id}, function(err, data){
+        if(data){
+          if(data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time){
+            data.page_id = page.id;
+            data.avatar = avatar;
+            data.snippet = threadData.snippet;
+            data.updated_time = threadData.updated_time;
+            data.save();
+            //Push update
+            if(isDBReturned){
+              pusher.trigger('notifications', 'thread.update', {data});
+            }
+          }
+        }else{
+          Thread.create(threadData, function(err, data){
+            //Push update
+            if(isDBReturned){
+              pusher.trigger('notifications', 'thread.new', {data});
+            }
+          });
+        }
+      })
+
+      //Sync message 
+      await this.syncThreadMessages(threadData.id, pageAccessToken);
+    }
+  }
+
+  //Sync posts
+  const posts = await this.getPosts();
+  posts.map((post)=>{
+    post.page_id = page.id;
+    Post.create(post);
+
+    //Sync comments
   })
+
+  res.json(pageData);
 }
 /**
  * GET /api/facebook/threads
@@ -51,8 +92,6 @@ exports.threads = async (req, res, next) => {
       res.json(data);
     }
   })
-
-  //Continue to get token
 
   //Get page token
   var token = await this.getPageToken(pageId);
@@ -144,6 +183,23 @@ exports.messages = async (req, res, next) => {
 
   res.json({data: messages});
 };
+
+exports.syncThreadMessages = async (threadId, token) => {
+  graph.setAccessToken(token);
+  const messages = await this.getThreadMessages(threadId, nextId);
+
+  if(messages){
+    messages.forEach(message => {
+      Message.findOne({id:message.id}, function(err, data){
+        if(err || !data){
+          message.thread_id = threadId;
+          Message.create(message);
+        }
+      })
+    });
+  }
+  return messages;
+}
 
 
 /**
@@ -248,6 +304,7 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
           if(message.tags && message.tags.data){
             message.tags = message.tags.data
           }
+          message.type = MessageTypes.chat;
           return message;
         })
       }
@@ -292,6 +349,19 @@ exports.getThreadAvatar = (userId) => {
         return;
       }
       resolve(result.profile_pic);
+    });
+  })
+
+  return promise;
+}
+
+exports.getPosts = ()=>{
+  var promise = new Promise((resolve) => {
+    graph.get(`me/feed?fields=attachments,created_time,full_picture,message,picture,status_type`, (err, result) => {
+      if (err) {
+        resolve(null);
+      }
+      resolve(result);
     });
   })
 

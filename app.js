@@ -19,6 +19,13 @@ const expressStatusMonitor = require('express-status-monitor');
 const sass = require('node-sass-middleware');
 const multer = require('multer');
 var cors = require('cors')
+const responseTime = require('response-time');
+// const redis = require("redis");
+// const client = redis.createClient('14115', 'redis-14115.c62.us-east-1-4.ec2.cloud.redislabs.com', {
+//   db: 'pagemanagement',
+//   password: '123!@#!@',
+  
+// });
 
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
@@ -114,6 +121,7 @@ app.use((req, res, next) => {
 });
 
 app.use(cors())
+app.use(responseTime());
 
 // Accepts POST requests at /webhook endpoint
 app.post('/webhook', webHookController.receivedWebhook);
@@ -130,6 +138,7 @@ app.post('/api/upload', upload.single('myFile'), lusca({ csrf: true }), apiContr
 
 // Facebook pages
 app.get('/api/facebook/pages', passportConfig.isJwtAuthenticated, facebookController.pages);
+app.get('/api/facebook/page-setup', passportConfig.isJwtAuthenticated, facebookController.setupPage);
 app.get('/api/facebook/threads', passportConfig.isJwtAuthenticated, facebookController.threads);
 app.get('/api/facebook/messages', passportConfig.isJwtAuthenticated, facebookController.messages);
 app.post('/api/facebook/postMessage', passportConfig.isJwtAuthenticated, facebookController.postMessage);
