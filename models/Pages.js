@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const pageSchema = new mongoose.Schema({
   id: { type: String, unique: true },
-  userId: String,
+  user_id: String,
   isDefault: Boolean,
   access_token: String,
   long_live_access_token: String,

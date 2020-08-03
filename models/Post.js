@@ -6,6 +6,9 @@ const postSchema = new mongoose.Schema({
   created_time: String,
   type: String,
   attachments: {},
+  full_picture: {},
+  picture: {},
+  status_type: {},
 }, { timestamps: true });
 
 const Post = mongoose.model('Posts', postSchema);

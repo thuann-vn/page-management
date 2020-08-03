@@ -6,6 +6,7 @@ const { pusher } = require('../services/pusher');
 const Message = require('../models/Messages');
 const { MessageTypes } = require('../constants');
 const Post = require('../models/Post');
+const Customer = require('../models/Customer');
 
 exports.pages = async (req, res) => {
   this.getFacebookToken(req);
@@ -14,131 +15,159 @@ exports.pages = async (req, res) => {
   })
 }
 
-exports.setupPage = async (req, res) => {
-  const page = req.body.page;
-  pageAccessToken = await this.getPageAccessToken(page.access_token);
-  graph.setAccessToken(pageAccessToken);
+exports.setupPage = async (req, res, next) => {
+  try{
 
-  //Create pages
-  var pageData = new Page(pageData);
-  pageData.userId = req.user.id;
-  pageData.access_token = pageAccessToken;
-  pageData.save();
-
-  //Syncs threads
-  const conversations = await this.getConversations(pageData.id);
-  if(conversations){
-    for (var i = 0; i < conversations.length; i++) {
-      var threadData = await this.getThread(conversations[i].id);
-      threadData.user = { ...threadData.participants.data[0] };
-      const avatar = await self.getThreadAvatar(threadData.user.id);
-      threadData.avatar = avatar;
-      threadData.page_id = page.id;
-      Thread.findOne({id: threadData.id}, function(err, data){
-        if(data){
-          if(data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time){
-            data.page_id = page.id;
-            data.avatar = avatar;
-            data.snippet = threadData.snippet;
-            data.updated_time = threadData.updated_time;
-            data.save();
-            //Push update
-            if(isDBReturned){
-              pusher.trigger('notifications', 'thread.update', {data});
-            }
-          }
-        }else{
-          Thread.create(threadData, function(err, data){
-            //Push update
-            if(isDBReturned){
-              pusher.trigger('notifications', 'thread.new', {data});
-            }
-          });
-        }
-      })
-
-      //Sync message 
-      await this.syncThreadMessages(threadData.id, pageAccessToken);
+    const page = req.body;
+    pageAccessToken = await this.getPageAccessToken(page.access_token);
+  
+    //Create pages
+    var pageData = await Page.findOne({id: page.id});
+    if(!pageData){
+      var pageData = new Page(page);
+      pageData.user_id = req.user.id;
+      pageData.access_token = pageAccessToken;
+      pageData.save();  
     }
+    
+    //Syncs threads
+    graph.setAccessToken(pageAccessToken);
+    const conversations = await this.getConversations(pageData.id);
+    if (conversations) {
+      for (var i = 0; i < conversations.length; i++) {
+        var threadData = await this.getThread(conversations[i].id);
+  
+        //Create customer first
+        const threadUser = threadData.participants.data[0];
+        const avatar = await this.getThreadAvatar(threadUser.id);
+        var customerData = {
+          ...threadUser,
+          avatar
+        }
+
+        //Check customer
+        existedCustomer = await Customer.findOne({id: customerData.id});
+        if(!existedCustomer){
+          Customer.create(customerData);
+        }
+
+        threadData.avatar = avatar;
+        threadData.page_id = page.id;
+        threadData.customer_id = customerData.id;
+        Thread.findOne({ id: threadData.id }, function (err, data) {
+          if (data) {
+            if (data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time) {
+              data.page_id = page.id;
+              data.avatar = avatar;
+              data.snippet = threadData.snippet;
+              data.updated_time = threadData.updated_time;
+              data.save();
+            }
+          } else {
+            Thread.create(threadData, function (err, data) {});
+          }
+        })
+  
+        //Sync message 
+        await this.syncThreadMessages(threadData);
+      }
+    }
+  
+    //Sync posts
+    const posts = await this.getPosts();
+    if (posts.data) {
+      for (var i = 0; i < posts.data.length; i++) {
+        var post = posts.data[i];
+        post.page_id = page.id;
+        Post.create(post);
+  
+        //Sync comments
+        const comments = await this.getComments(post.id);
+        if(comments.data){
+          comments.data.map((comment) => {
+            comment.post_id = post.id;
+            comment.type = MessageTypes.comment;
+            comment.customer_id = Comment.from.id;
+            Message.create(comment);
+  
+            //Check customer
+            Customer.findOne({id: Comment.from.id}).then(doc => {
+              if(!doc){
+                Customer.create(comment.from);
+              }
+            });
+          })
+        }
+      }
+    }
+  
+    res.json(pageData);
+  }catch(err){
+    next(err);
   }
-
-  //Sync posts
-  const posts = await this.getPosts();
-  posts.map((post)=>{
-    post.page_id = page.id;
-    Post.create(post);
-
-    //Sync comments
-  })
-
-  res.json(pageData);
 }
 /**
  * GET /api/facebook/threads
  * Facebook API example.
  */
 exports.threads = async (req, res, next) => {
-  var self = this;
   // const pageToken = req.body.access_token;
   // const pageId = req.body.id;
-  const pageId = '106261714466963';
+  var threads = [];
+  var pages = await Page.find({user_id: req.user.id});
+  var pageIds = pages.map(page => page.id);
 
   //Try to get from database
   var isDBReturned = false;
-  Thread.find({page_id: pageId}).sort({updated_time: -1}).exec(function(err, data){
-    console.log(data);
-    if(data && data.length){
-      isDBReturned = true;
-      res.json(data);
-    }
-  })
+  const data = await Thread.find({ page_id: {$in: pageIds} }).sort({ updated_time: -1 }).exec();
+  return res.json(data);
 
-  //Get page token
-  var token = await this.getPageToken(pageId);
-  if(!token){
-    return res.json({success: false});
-  }
-  graph.setAccessToken(token);
-  const conversations = await this.getConversations(pageId);
-  var threads = [];
-  if(conversations){
-    for (var i = 0; i < conversations.length; i++) {
-      var threadData = await this.getThread(conversations[i].id);
-      threadData.user = { ...threadData.participants.data[0] };
-      const avatar = await self.getThreadAvatar(threadData.user.id);
-      threadData.avatar = avatar;
-      threadData.page_id = pageId;
-      Thread.findOne({id: threadData.id}, function(err, data){
-        if(data){
-          if(data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time){
-            data.page_id = pageId;
-            data.avatar = avatar;
-            data.snippet = threadData.snippet;
-            data.updated_time = threadData.updated_time;
-            data.save();
-            //Push update
-            if(isDBReturned){
-              pusher.trigger('notifications', 'thread.update', {data});
+  for(var pageIndex=0; i<pages.length; i++){
+    var pageId = pages[pageIndex].id;
+    var pageToken = pages[pageIndex].access_token;
+    //Get page token
+    var token = await this.getPageToken(pageId);
+    if (!token) {
+      return res.json({ success: false });
+    }
+    graph.setAccessToken(token);
+    const conversations = await this.getConversations(pageId);
+    if (conversations) {
+      for (var i = 0; i < conversations.length; i++) {
+        var threadData = await this.getThread(conversations[i].id);
+        threadData.user = { ...threadData.participants.data[0] };
+        const avatar = await this.getThreadAvatar(threadData.user.id);
+        threadData.avatar = avatar;
+        threadData.page_id = pageId;
+        Thread.findOne({ id: threadData.id }, function (err, data) {
+          if (data) {
+            if (data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time) {
+              data.page_id = pageId;
+              data.avatar = avatar;
+              data.snippet = threadData.snippet;
+              data.updated_time = threadData.updated_time;
+              data.save();
+              //Push update
+              if (isDBReturned) {
+                pusher.trigger('notifications', 'thread.update', { data });
+              }
             }
+          } else {
+            Thread.create(threadData, function (err, data) {
+              //Push update
+              if (isDBReturned) {
+                pusher.trigger('notifications', 'thread.new', { data });
+              }
+            });
           }
-        }else{
-          Thread.create(threadData, function(err, data){
-            //Push update
-            if(isDBReturned){
-              pusher.trigger('notifications', 'thread.new', {data});
-            }
-          });
-        }
-      })
+        })
 
-      delete (threadData.participants);
-      threads.push(threadData);
+        delete (threadData.participants);
+        threads.push(threadData);
+      }
     }
   }
-
-  if(!isDBReturned){
-    res.json(threads);
-  }
+  res.json(threads);
 };
 
 /**
@@ -150,14 +179,14 @@ exports.messages = async (req, res, next) => {
   const threadId = req.query.threadId;
   const nextId = req.query.nextId;
   const pageId = '106261714466963';
-  
+
   //Try to get from database
   var isDBReturned = false;
   try {
-    var data = await Message.find({thread_id: threadId}).sort({updated_time: -1}).exec();
-    if(data && data.length){
+    var data = await Message.find({ thread_id: threadId }).sort({ updated_time: -1 }).exec();
+    if (data && data.length) {
       isDBReturned = true;
-      res.json({data: data});
+      res.json({ data: data });
       return;
     }
   } catch (err) {
@@ -165,34 +194,34 @@ exports.messages = async (req, res, next) => {
   }
 
   var token = await this.getPageToken(pageId);
-  if(!token){
-    return res.json({success: false});
+  if (!token) {
+    return res.json({ success: false });
   }
   graph.setAccessToken(token);
   const messages = await this.getThreadMessages(threadId, nextId);
 
-  if(messages){
+  if (messages) {
     messages.forEach(message => {
-      Message.findOne({id:message.id}, function(err, data){
-        if(err || !data){
+      Message.findOne({ id: message.id }, function (err, data) {
+        if (err || !data) {
           Message.create(message);
         }
       })
     });
   }
 
-  res.json({data: messages});
+  res.json({ data: messages });
 };
 
-exports.syncThreadMessages = async (threadId, token) => {
-  graph.setAccessToken(token);
-  const messages = await this.getThreadMessages(threadId, nextId);
-
-  if(messages){
+exports.syncThreadMessages = async (thread) => {
+  const messages = await this.getThreadMessages(thread.id);
+  if (messages) {
     messages.forEach(message => {
-      Message.findOne({id:message.id}, function(err, data){
-        if(err || !data){
-          message.thread_id = threadId;
+      Message.findOne({ id: message.id }, function (err, data) {
+        if (err || !data) {
+          message.thread_id = thread.id;
+          message.customer_id = thread.customer_id;
+          message.type = MessageTypes.chat;
           Message.create(message);
         }
       })
@@ -212,15 +241,15 @@ exports.postMessage = async (req, res, next) => {
   const message = req.body.message;
   const pageId = '106261714466963';
 
-  if(!message || !thread){
+  if (!message || !thread) {
     return res.json(false);
   }
-  
+
   var token = await this.getPageToken(pageId);
-  if(!token){
-    return res.json({success: false});
+  if (!token) {
+    return res.json({ success: false });
   }
-  graph.setAccessToken(token);  
+  graph.setAccessToken(token);
   var messageBody = {
     "recipient": {
       "id": thread.user.id
@@ -246,7 +275,7 @@ exports.getPageAccessToken = async (pageToken) => {
         resolve(null);
       }
 
-      resolve(token);
+      resolve(token.access_token);
     });
   })
 
@@ -254,14 +283,14 @@ exports.getPageAccessToken = async (pageToken) => {
 }
 
 
-exports.getConversations = async (pageId) => {
+exports.getConversations = async () => {
   var promise = new Promise((resolve) => {
-    graph.get(`${pageId}?fields=conversations`, (err, result) => {
+    graph.get(`me?fields=conversations`, (err, result) => {
       if (err || result.error) {
         resolve(null);
         return;
       }
-      resolve(result.conversations.data);
+      resolve(result.conversations ? result.conversations.data : []);
     });
   })
 
@@ -293,15 +322,15 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
       if (err) {
         resolve([]);
       }
-      if(result.data){
+      if (result.data) {
         result.data = result.data.reverse();
 
-        result.data.map(message =>{
+        result.data.map(message => {
           message.thread_id = threadId;
-          if(message.to && message.to.data){
+          if (message.to && message.to.data) {
             message.to = message.to.data[0]
           }
-          if(message.tags && message.tags.data){
+          if (message.tags && message.tags.data) {
             message.tags = message.tags.data
           }
           message.type = MessageTypes.chat;
@@ -316,17 +345,17 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
 }
 
 exports.getPageToken = async (pageId) => {
-   //Get page token
-   var page = await Page.findOne({id: pageId});
-   if(!page){
-     return null;
-   }
+  //Get page token
+  var page = await Page.findOne({ id: pageId });
+  if (!page) {
+    return null;
+  }
 
-   return page.access_token;
+  return page.access_token;
 }
 
 exports.postThreadMessage = async (pageId, message = null) => {
-  if(message){
+  if (message) {
     var promise = new Promise((resolve) => {
       graph.post(`${pageId}/messages`, message, (err, result) => {
         if (err) {
@@ -336,7 +365,7 @@ exports.postThreadMessage = async (pageId, message = null) => {
         resolve(result);
       });
     })
-  
+
     return promise;
   }
 }
@@ -355,9 +384,22 @@ exports.getThreadAvatar = (userId) => {
   return promise;
 }
 
-exports.getPosts = ()=>{
+exports.getPosts = () => {
   var promise = new Promise((resolve) => {
     graph.get(`me/feed?fields=attachments,created_time,full_picture,message,picture,status_type`, (err, result) => {
+      if (err) {
+        resolve(null);
+      }
+      resolve(result);
+    });
+  })
+
+  return promise;
+}
+
+exports.getComments = (postId) => {
+  var promise = new Promise((resolve) => {
+    graph.get(`${postId}?fields=comments{comment_count,attachment,from,created_time,id,message,message_tags,object,permalink_url,comments}`, (err, result) => {
       if (err) {
         resolve(null);
       }

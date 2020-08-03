@@ -89,11 +89,7 @@ app.use(session({
   resave: true,
   saveUninitialized: true,
   secret: process.env.SESSION_SECRET,
-  cookie: { maxAge: 1209600000 }, // two weeks in milliseconds
-  store: new MongoStore({
-    url: process.env.MONGODB_URI,
-    autoReconnect: true,
-  })
+  cookie: { maxAge: 1000*60*30 }, // in milliseconds
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -132,13 +128,14 @@ app.get('/webhook', webHookController.verifyWebhook);
 /**
  * API examples routes.
  */
-app.get('/api', apiController.getApi);app.get('/api/lob', apiController.getLob);
+app.get('/api', apiController.getApi);
+app.get('/api/lob', apiController.getLob);
 app.get('/api/upload', lusca({ csrf: true }), apiController.getFileUpload);
 app.post('/api/upload', upload.single('myFile'), lusca({ csrf: true }), apiController.postFileUpload);
 
 // Facebook pages
 app.get('/api/facebook/pages', passportConfig.isJwtAuthenticated, facebookController.pages);
-app.get('/api/facebook/page-setup', passportConfig.isJwtAuthenticated, facebookController.setupPage);
+app.post('/api/facebook/page-setup', passportConfig.isJwtAuthenticated, facebookController.setupPage);
 app.get('/api/facebook/threads', passportConfig.isJwtAuthenticated, facebookController.threads);
 app.get('/api/facebook/messages', passportConfig.isJwtAuthenticated, facebookController.messages);
 app.post('/api/facebook/postMessage', passportConfig.isJwtAuthenticated, facebookController.postMessage);
@@ -147,32 +144,19 @@ app.post('/api/facebook/postMessage', passportConfig.isJwtAuthenticated, faceboo
 
 app.post('/api/auth/facebook', authController.facebookLogin);
 
-
 /**
- * OAuth authentication routes. (Sign in)
+ * Account
  */
-app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email', 'public_profile'] }));
-app.get('/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets.readonly'], accessType: 'offline', prompt: 'consent' }));
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
+app.post('/api/account/complete-setup', passportConfig.isJwtAuthenticated, userController.postCompleteSetup);
+app.get('/api/account/get-setup-status', passportConfig.isJwtAuthenticated, userController.getSetupStatus);
 
 /**
  * Error Handler.
  */
-if (process.env.NODE_ENV === 'development') {
-  // only use in development
-  app.use(errorHandler());
-} else {
-  app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).send('Server Error');
-  });
-}
-
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({success: false, message: err});
+});
 /**
  * Start Express server.
  */
