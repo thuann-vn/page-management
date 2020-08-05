@@ -4,7 +4,7 @@ exports.getMessageById = async (pageToken, id) => {
         graph.setAccessToken(pageToken);
         graph.get(`${id}?fields=sticker,message,from,created_time,tags,to,attachments,shares`, (err, result) => {
             if (err) {
-                resolve(null);
+                return resolve(null);
             }
             resolve(result);
         });
@@ -19,9 +19,24 @@ exports.getThreadByUserId = async (pageToken, userId) => {
         graph.get(`/me/conversations?fields=unread_count,participants,is_subscribed,snippet,updated_time&user_id=${userId}`, (err, result) => {
             if (err) {
                 console.error(err);
-                resolve(null);
+                return resolve(null);
             }
             resolve(result.data && result.data.length ? result.data[0] : null);
+        });
+    })
+
+    return promise;
+}
+
+exports.getPageUserById = async (pageToken, userId) => {
+    var promise = new Promise((resolve) => {
+        graph.setAccessToken(pageToken);
+        graph.get(`${userId}`, (err, result) => {
+            if (err) {
+                console.error(err);
+                return resolve(null);
+            }
+            resolve(result);
         });
     })
 

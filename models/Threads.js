@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const threadSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   page_id: String,
+  customer_id: String,
   snippet: String,
   unread_count: Number,
   participants: {},

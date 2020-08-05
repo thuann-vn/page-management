@@ -7,6 +7,10 @@ const customerSchema = new mongoose.Schema({
   email: String,
   avatar: String,
   updated_time: Date,
+  user_id: String,
+  page_id: String,
+  snippet: String,
+  last_update: String
 }, { timestamps: false });
 
 const Customer = mongoose.model('Customers', customerSchema);

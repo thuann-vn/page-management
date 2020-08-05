@@ -10,7 +10,9 @@ const messageSchema = new mongoose.Schema({
   created_time: String,
   thread_id: String,
   post_id: String,
+  customer_id: String,
   type: String,
+  comment_id: String,
   attachments: {},
   sticker:{},
 }, { timestamps: true });

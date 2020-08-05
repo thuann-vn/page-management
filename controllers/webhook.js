@@ -7,6 +7,9 @@ const Message = require('../models/Messages');
 const { Facebook } = require('../services/facebook');
 const { threads } = require('./facebook');
 const Thread = require('../models/Threads');
+const Customer = require('../models/Customer');
+const { result } = require('lodash');
+const { MessageTypes } = require('../constants');
 
 exports.verifyWebhook = async (req, res) => {
   /** UPDATE YOUR VERIFY TOKEN **/
@@ -50,51 +53,77 @@ exports.receivedWebhook = async (req, res) => {
   if (body.object === 'page') {
     body.entry.forEach(function (entry) {
       // Gets the body of the webhook event
-      if(entry.messaging && entry.messaging.length){
+      if (entry.messaging && entry.messaging.length) {
         let webhook_event = entry.messaging[0];
-        if(!webhook_event.message || !webhook_event.message.mid){
+        if (!webhook_event.message || !webhook_event.message.mid) {
           return;
         }
         // Get the sender PSID
         let sender_psid = webhook_event.sender.id;
-        Page.findOne({id: {$in: [webhook_event.sender.id, webhook_event.recipient.id]}}, function(err, page){
-          if(!err && page){
-            Facebook.getThreadByUserId(page.access_token, page.id == webhook_event.recipient.id ? webhook_event.sender.id: webhook_event.recipient.id).then(function(thread){
-              //Check if thread is existed
-              Thread.findOne({id: thread.id}, function(err, data){
-                  if(err || !data){
-                    thread.page_id = page.id;
-                    Thread.create({
-                      ...thread
+        Page.findOne({ id: { $in: [webhook_event.sender.id, webhook_event.recipient.id] } }, function (err, page) {
+          if (!err && page) {
+            var customerId = page.id == webhook_event.recipient.id ? webhook_event.sender.id : webhook_event.recipient.id;
+            var refCustomer = null;
+            Customer.findOne({ id: customerId }, (err, customer) => {
+              if (!customer) {
+                Facebook.getPageUserById(page.access_token, customerId).then(function (res) {
+                  if (res) {
+                    Customer.create({ ...res, avatar: res.profile_pic, name: `${res.last_name} ${res.first_name}` }, (err, res) => {
+                      refCustomer = res;
                     });
-
-                    pusher.trigger('notifications', 'thread.add', {thread});
-                  }else{
-                    data.updated_time = thread.updated_time;
-                    data.snippet = thread.snippet;
-                    data.unread_count = thread.unread_count;
-                    pusher.trigger('notifications', 'thread.update', data);
-                    data.save();
                   }
+                })
+              } else {
+                refCustomer = customer;
+              }
+            })
+
+            Facebook.getThreadByUserId(page.access_token, customerId).then(function (thread) {
+              //Check if thread is existed
+              Thread.findOne({ id: thread.id }, function (err, data) {
+                if (err || !data) {
+                  thread.page_id = page.id;
+                  thread.customer_id = customerId;
+
+                  Thread.create({
+                    ...thread
+                  });
+
+                  pusher.trigger('notifications', 'thread.add', { thread });
+                } else {
+                  data.updated_time = thread.updated_time;
+                  data.snippet = thread.snippet;
+                  data.unread_count = thread.unread_count;
+                  pusher.trigger('notifications', 'thread.update', data);
+                  data.save();
+                }
               })
-              
-              Facebook.getMessageById(page.access_token, webhook_event.message.mid).then(function(message){
+
+              Facebook.getMessageById(page.access_token, webhook_event.message.mid).then(function (message) {
                 message.thread_id = thread.id;
                 message.page_id = page.id;
-                pusher.trigger('notifications', 'message.new', {thread, message});
+                message.customer_id = customerId;
+                message.type = MessageTypes.chat;
+                pusher.trigger('notifications', 'message.new', { thread, message });
 
-                Thread.findOne({id: message.id}, function(err, data){
-                  if(err || !data){
+                Thread.findOne({ id: message.id }, function (err, data) {
+                  if (err || !data) {
                     Message.create({
                       ...message
-                    }, function(err){
-                      if(err){
+                    }, function (err) {
+                      if (err) {
                         console.error(err);
                       }
                     })
                   }
+                })
               })
-              })
+
+              //Update snippet
+              if(refCustomer){
+                refCustomer.snippet = thread.snippet;
+                refCustomer.save();
+              }
             })
           }
         });
@@ -104,7 +133,7 @@ exports.receivedWebhook = async (req, res) => {
         if (webhook_event.message) {
           handleMessage(sender_psid, webhook_event.message);
         } else if (webhook_event.postback) {
-  
+
           handlePostback(sender_psid, webhook_event.postback);
         }
       }
