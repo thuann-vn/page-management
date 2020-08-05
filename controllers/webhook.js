@@ -104,7 +104,7 @@ exports.receivedWebhook = async (req, res) => {
                 message.page_id = page.id;
                 message.customer_id = customerId;
                 message.type = MessageTypes.chat;
-                pusher.trigger('notifications', 'message.new', { thread, message });
+                pusher.trigger('notifications', 'message.new', { refCustomer, message });
 
                 Thread.findOne({ id: message.id }, function (err, data) {
                   if (err || !data) {
