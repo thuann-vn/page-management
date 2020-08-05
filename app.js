@@ -1,6 +1,7 @@
 /**
  * Module dependencies.
  */
+var http = require("http");
 const express = require('express');
 const compression = require('compression');
 const session = require('express-session');
@@ -20,6 +21,7 @@ const sass = require('node-sass-middleware');
 const multer = require('multer');
 var cors = require('cors')
 const responseTime = require('response-time');
+const https = require("https");
 // const redis = require("redis");
 // const client = redis.createClient('14115', 'redis-14115.c62.us-east-1-4.ec2.cloud.redislabs.com', {
 //   db: 'pagemanagement',
@@ -119,6 +121,10 @@ app.use((req, res, next) => {
 app.use(cors())
 app.use(responseTime());
 
+app.get('/keep-alive', (req, res)=>{
+  res.json(true);
+});
+
 // Accepts POST requests at /webhook endpoint
 app.post('/webhook', webHookController.receivedWebhook);
 
@@ -157,6 +163,12 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({success: false, message: err});
 });
+
+// Keep server alive
+setInterval(function() {
+  https.get("https://page-managment-2.herokuapp.com/keep-alive");
+}, 300000); // every 5 minutes (300000)
+
 /**
  * Start Express server.
  */
@@ -164,5 +176,4 @@ app.listen(app.get('port'), () => {
   console.log('%s App is running at http://localhost:%d in %s mode', chalk.green('✓'), app.get('port'), app.get('env'));
   console.log('  Press CTRL-C to stop\n');
 });
-
 module.exports = app;

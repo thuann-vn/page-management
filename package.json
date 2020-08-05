@@ -44,6 +44,7 @@
     "facebook-chat-api": "^1.8.0",
     "fbgraph": "^1.4.4",
     "googleapis": "^52.1.0",
+    "https": "^1.0.0",
     "instagram-node": "^0.5.8",
     "jquery": "^3.5.1",
     "jquery.easing": "^1.4.1",
