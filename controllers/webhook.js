@@ -106,6 +106,7 @@ exports.receivedWebhook = async (req, res) => {
                 message.type = MessageTypes.chat;
                 pusher.trigger('notifications', 'message.new', { thread: refCustomer, message });
 
+                //Create or update message
                 Message.findOne({ id: message.id }, function (err, data) {
                   if (err || !data) {
                     Message.create({
@@ -117,13 +118,14 @@ exports.receivedWebhook = async (req, res) => {
                     })
                   }
                 })
-              })
 
-              //Update snippet
-              if(refCustomer){
-                refCustomer.snippet = thread.snippet;
-                refCustomer.save();
-              }
+                //Update snippet
+                if(refCustomer){
+                  refCustomer.snippet = thread.snippet;
+                  refCustomer.last_update = message.created_time;
+                  refCustomer.save();
+                }
+              })
             })
           }
         });
