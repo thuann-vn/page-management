@@ -8,6 +8,7 @@ const { MessageTypes } = require('../constants');
 const Post = require('../models/Post');
 const Customer = require('../models/Customer');
 const fbgraph = require('fbgraph');
+const { Facebook } = require('../services/facebook');
 
 exports.pages = async (req, res) => {
   this.getFacebookToken(req);
@@ -232,6 +233,7 @@ exports.syncThreadMessages = async (thread) => {
 exports.postMessage = async (req, res, next) => {
   const customer = req.body.thread;
   const message = req.body.message;
+  const uuid = req.body.uuid;
   const pageId = customer.page_id;
 
   if (!message || !customer) {
@@ -260,7 +262,16 @@ exports.postMessage = async (req, res, next) => {
       return;
     }
 
-    res.json({success: true, data: result});
+    console.log(result);
+    //Get message detail
+    Facebook.getMessageById(token, result.data.message_id).then((data)=>{
+      Message.create({
+        ...result,
+        uuid: uuid
+      });
+  
+      res.json({success: true, data});
+    })
   });
 };
 

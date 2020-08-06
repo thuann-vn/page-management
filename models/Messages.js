@@ -13,6 +13,7 @@ const messageSchema = new mongoose.Schema({
   customer_id: String,
   type: String,
   comment_id: String,
+  uuid: String,
   attachments: {},
   sticker:{},
 }, { timestamps: true });
