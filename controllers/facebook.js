@@ -235,6 +235,7 @@ exports.postMessage = async (req, res, next) => {
   const message = req.body.message;
   const uuid = req.body.uuid;
   const pageId = customer.page_id;
+  const customerId = customer.id;
 
   if (!message || !customer) {
     return res.json(false);
@@ -246,7 +247,7 @@ exports.postMessage = async (req, res, next) => {
   }
   var messageBody = {
     "recipient": {
-      "id": customer.id
+      "id": customerId
     },
     "message": {
       "text": message
@@ -262,16 +263,41 @@ exports.postMessage = async (req, res, next) => {
       return;
     }
 
-    console.log(result);
-    //Get message detail
-    Facebook.getMessageById(token, result.data.message_id).then((data)=>{
-      Message.create({
-        ...result,
-        uuid: uuid
-      });
-  
-      res.json({success: true, data});
-    })
+    Facebook.getThreadByUserId(token, customerId).then(function (thread) {//Check if thread is existed
+      Thread.findOne({ id: thread.id }, function (err, data) {
+        if (err || !data) {
+          thread.page_id = page.id;
+          thread.customer_id = customerId;
+
+          Thread.create({
+            ...thread
+          });
+
+          pusher.trigger('notifications', 'thread.add', { thread });
+        } else {
+          data.updated_time = thread.updated_time;
+          data.snippet = thread.snippet;
+          data.unread_count = thread.unread_count;
+          pusher.trigger('notifications', 'thread.update', data);
+          data.save();
+        }
+      })
+
+      //Get message detail
+      Facebook.getMessageById(token, result.message_id).then((data)=>{
+        var messageData = {
+          ...data,
+          customer_id: customerId,
+          page_id: pageId,
+          thread_id: thread.id,
+          type: MessageTypes.chat,
+          uuid: uuid
+        } 
+        Message.create(messageData);
+    
+        res.json({success: true, data:messageData});
+      })
+    });
   });
 };
 
