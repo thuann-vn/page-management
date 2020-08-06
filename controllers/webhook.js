@@ -104,6 +104,14 @@ exports.receivedWebhook = async (req, res) => {
                 message.page_id = page.id;
                 message.customer_id = customerId;
                 message.type = MessageTypes.chat;
+
+                //Update snippet
+                if(refCustomer){
+                  refCustomer.snippet = thread.snippet;
+                  refCustomer.last_update = message.created_time;
+                  refCustomer.save();
+                }
+                
                 pusher.trigger('notifications', 'message.new', { thread: refCustomer, message });
 
                 //Create or update message
@@ -118,13 +126,6 @@ exports.receivedWebhook = async (req, res) => {
                     })
                   }
                 })
-
-                //Update snippet
-                if(refCustomer){
-                  refCustomer.snippet = thread.snippet;
-                  refCustomer.last_update = message.created_time;
-                  refCustomer.save();
-                }
               })
             })
           }
