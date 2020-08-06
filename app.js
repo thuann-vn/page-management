@@ -45,6 +45,7 @@ const apiController = require('./controllers/api');
 const contactController = require('./controllers/contact');
 const facebookController = require('./controllers/facebook');
 const webHookController = require('./controllers/webhook');
+const customerController = require('./controllers/customer');
 
 /**
  * API keys and Passport configuration.
@@ -155,6 +156,9 @@ app.post('/api/auth/facebook', authController.facebookLogin);
  */
 app.post('/api/account/complete-setup', passportConfig.isJwtAuthenticated, userController.postCompleteSetup);
 app.get('/api/account/get-setup-status', passportConfig.isJwtAuthenticated, userController.getSetupStatus);
+
+// Customer
+app.get('/api/customer/:id', passportConfig.isJwtAuthenticated, customerController.getCustomer);
 
 /**
  * Error Handler.
