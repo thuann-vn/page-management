@@ -3,7 +3,7 @@ const Tag = require('../models/Tags');
 
 /**
  * GET /api/customer/:id
- * List of API examples.
+ * Get customer by id
  */
 exports.getCustomer = async (req, res) => {
   const { id } = req.params;
@@ -12,8 +12,29 @@ exports.getCustomer = async (req, res) => {
 };
 
 /**
+ * PUT /api/customer/:id
+ * Update customer
+ */
+exports.updateCustomer = async (req, res) => {
+  const { id } = req.params;
+  const updateFields = req.body;
+  const customer = await Customer.findOne({ id: id, user_id: req.user.id });
+  if(updateFields.email){
+    customer.email = updateFields.email;
+  }
+  if(updateFields.phone){
+    customer.phone = updateFields.phone;
+  }
+  if(updateFields.address){
+    customer.address = updateFields.address;
+  }
+  customer.save();
+  res.json({success: true});
+};
+
+/**
  * GET /api/customer/:id/tags
- * List of API examples.
+ * Get customer tags
  */
 exports.getCustomerTags = async (req, res) => {
   const { id } = req.params;

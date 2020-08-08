@@ -11,7 +11,9 @@ const customerSchema = new mongoose.Schema({
   page_id: String,
   snippet: String,
   last_update: String,
-  tags: Array
+  tags: Array,
+  phone: String,
+  address: String
 }, { timestamps: false });
 
 const Customer = mongoose.model('Customers', customerSchema);
