@@ -194,17 +194,20 @@ exports.getThreadAndMessages = async (page, userId) =>{
 exports.messages = async (req, res, next) => {
   // const pageToken = req.body.access_token;
   const customerId = req.query.threadId;
+  const page = req.query.page || 1;
+  const pageSize = 30;
 
   // Try to get from database
   try {
-    var data = await Message.find({ customer_id: customerId }).sort({ created_time: 1 }).exec();
+    var total = await Message.countDocuments({ customer_id: customerId });
+    var data = await Message.find({ customer_id: customerId }).sort({ created_time: 1 }).limit(pageSize).skip(pageSize * page).exec();
     if (data && data.length) {
-      res.json({ data: data });
+      res.json({ data: data, total: total  });
       return;
     }
-    res.json({ data: [] });
+    res.json({ data: [], total: total });
   } catch (err) {
-    console.error(err);
+    console.log(err);
   }
 };
 

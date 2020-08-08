@@ -7,7 +7,11 @@ const Tag = require('../models/Tags');
  * List of API examples.
  */
 exports.getTagList = async (req, res) => {
-  const tags = await Tag.find({user_id: req.user.id});
+  var {excludes = ''} = req.query;
+  excludes = excludes.split(',');
+  const tags = await Tag.find({user_id: req.user.id, id: {
+    $nin: excludes
+  }});
   res.json(tags);
 };
 

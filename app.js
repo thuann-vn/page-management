@@ -161,6 +161,7 @@ app.get('/api/account/get-setup-status', passportConfig.isJwtAuthenticated, user
 // Customer
 app.get('/api/customer/:id', passportConfig.isJwtAuthenticated, customerController.getCustomer);
 app.get('/api/customer/:id/tags', passportConfig.isJwtAuthenticated, customerController.getCustomerTags);
+app.post('/api/customer/:id/tags', passportConfig.isJwtAuthenticated, customerController.updateCustomerTags);
 
 // Tag
 app.get('/api/tags', passportConfig.isJwtAuthenticated, tagController.getTagList);
