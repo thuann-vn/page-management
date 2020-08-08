@@ -168,6 +168,8 @@ app.post('/api/customer/:id/tags', passportConfig.isJwtAuthenticated, customerCo
 app.get('/api/tags', passportConfig.isJwtAuthenticated, tagController.getTagList);
 app.get('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.getTag);
 app.post('/api/tags', passportConfig.isJwtAuthenticated, tagController.createTag);
+app.put('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.updateTag);
+app.delete('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.deleteTag);
 
 /**
  * Error Handler.
