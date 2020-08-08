@@ -32,8 +32,8 @@ exports.getTag = async (req, res) => {
  * List of API examples.
  */
 exports.createTag = async (req, res) => {
-  const { name } = req.body;
-  const tag = await Tag.create({ name, user_id: req.user.id });
+  const { name, color } = req.body;
+  const tag = await Tag.create({ name, color, user_id: req.user.id });
   res.json(tag);
 };
 
