@@ -13,5 +13,12 @@ const threadSchema = new mongoose.Schema({
   avatar: String
 }, { timestamps: false });
 
+threadSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+      ret.id = ret._id;
+      delete ret._id;
+  }
+}); 
+
 const Thread = mongoose.model('Threads', threadSchema);
 module.exports = Thread;

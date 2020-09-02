@@ -9,6 +9,7 @@ const Post = require('../models/Post');
 const Customer = require('../models/Customer');
 const fbgraph = require('fbgraph');
 const { Facebook } = require('../services/facebook');
+const mongoose = require('mongoose');
 
 exports.pages = async (req, res) => {
   this.getFacebookToken(req);
@@ -20,13 +21,14 @@ exports.pages = async (req, res) => {
 exports.setupPage = async (req, res, next) => {
   try{
     const page = req.body;
-    const userId = req.user.id;
+    const userId = mongoose.Types.ObjectId(req.user.id);
     pageAccessToken = await this.getPageAccessToken(page.access_token);
   
     //Create pages
-    var pageData = await Page.findOne({id: page._id});
+    var pageData = await Page.findById(page.id);
     if(!pageData){
       pageData = new Page(page);
+      pageData._id = page.id;
       pageData.user_id = userId;
       pageData.access_token = pageAccessToken;
       pageData.save();  
@@ -48,7 +50,7 @@ exports.setupPage = async (req, res, next) => {
  * Facebook API example.
  */
 exports.threads = async (req, res, next) => {
-  var pages = await Page.find({user_id: req.user.id});
+  var pages = await Page.find({user_id: mongoose.Types.ObjectId(req.user.id)});
   var pageIds = pages.map(page => page._id);
 
   //Try to get from database
@@ -76,8 +78,8 @@ exports.getPostAndComments = async (page, userId)=>{
           if(!comment.from) return;
           comment.post_id = post._id;
           comment.type = MessageTypes.comment;
-          comment.customer_id = comment.from._id;
-          Message.findOne({id: comment._id}).then(doc => {
+          comment.customer_id = comment.from.id;
+          Message.findOne({_id: comment._id}).then(doc => {
             if(!doc){
               Message.create(comment);
               return;
@@ -94,7 +96,7 @@ exports.getPostAndComments = async (page, userId)=>{
               reply.type = MessageTypes.comment;
               reply.customer_id = reply.from._id;
               reply.comment_id = comment._id;
-              Message.findOne({id: comment._id}).then(doc => {
+              Message.findById(comment._id).then(doc => {
                 if(!doc){
                   Message.create(reply);
                   return;
@@ -106,7 +108,7 @@ exports.getPostAndComments = async (page, userId)=>{
 
 
               //Check customer
-              Customer.findOne({id: reply.from._id}).then(doc => {
+              Customer.findById(reply.from.id).then(doc => {
                 if(!doc){
                   var customer = {
                     ...comment.from,
@@ -121,10 +123,11 @@ exports.getPostAndComments = async (page, userId)=>{
           }
 
           //Check customer
-          Customer.findOne({id: comment.from._id}).then(doc => {
+          Customer.findById(comment.from.id).then(doc => {
             if(!doc){
               var customer = {
                 ...comment.from,
+                _id: comment.from.id,
                 user_id: userId,
                 page_id: page._id,
                 last_update: comment.created_time
@@ -144,13 +147,14 @@ exports.getThreadAndMessages = async (page, userId) =>{
   const conversations = await this.getConversations(page._id);
   if (conversations) {
     for (var i = 0; i < conversations.length; i++) {
-      var threadData = await this.getThread(conversations[i]._id);
-
+      var threadData = await this.getThread(conversations[i].id);
+      console.log('RUNNING THREAD', threadData);
       //Create customer first
       const threadUser = threadData.participants.data[0];
-      const avatar = await this.getThreadAvatar(threadUser._id);
+      const avatar = await this.getThreadAvatar(threadUser.id);
       var customerData = {
         ...threadUser,
+        _id: threadUser.id,
         avatar,
         user_id: userId,
         page_id: page._id,
@@ -164,11 +168,12 @@ exports.getThreadAndMessages = async (page, userId) =>{
         Customer.create(customerData);
       }
 
+      threadData._id = threadData.id;
       threadData.avatar = avatar;
       threadData.page_id = page._id;
       threadData.customer_id = customerData._id;
-      Thread.findOne({ id: threadData._id }, function (err, data) {
-        if (data) {
+      Thread.findById(threadData._id, function (err, data) {
+        if (!err && data) {
           if (data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time) {
             data.page_id = page._id;
             data.avatar = avatar;
@@ -199,8 +204,10 @@ exports.messages = async (req, res, next) => {
 
   // Try to get from database
   try {
-    var total = await Message.countDocuments({ customer_id: customerId });
-    var data = await Message.find({ customer_id: customerId }).sort({ created_time: 1 }).limit(pageSize).skip(pageSize * page).exec();
+    var conditions = { customer_id: customerId };
+    var total = await Message.countDocuments(conditions);
+    console.log(conditions);
+    var data = await Message.find(conditions).sort({ created_time: 1 }).limit(pageSize).skip(pageSize * (page-1)).exec();
     if (data && data.length) {
       res.json({ data: data, total: total  });
       return;
@@ -215,8 +222,9 @@ exports.syncThreadMessages = async (thread) => {
   const messages = await this.getThreadMessages(thread._id);
   if (messages) {
     messages.forEach(message => {
-      Message.findOne({ id: message._id }, function (err, data) {
+      Message.findById(message.id, function (err, data) {
         if (err || !data) {
+          message._id = message.id;
           message.thread_id = thread._id;
           message.customer_id = thread.customer_id;
           message.type = MessageTypes.chat;

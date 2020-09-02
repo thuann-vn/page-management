@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const pageSchema = new mongoose.Schema({
   _id: { type: String, unique: true },
-  user_id: String,
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   isDefault: Boolean,
   access_token: String,
   long_live_access_token: String,
@@ -12,6 +12,14 @@ const pageSchema = new mongoose.Schema({
   name: String,
   tasks: Array
 }, { timestamps: true });
+
+
+pageSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+      ret.id = ret._id;
+      delete ret._id;
+  }
+}); 
 
 const Page = mongoose.model('Pages', pageSchema);
 

@@ -18,6 +18,20 @@ exports.getOrder = async (req, res) => {
  */
 exports.createOrder = async (req, res) => {
   var data = req.body;
+
+  //Validate data
+  if(!data.customer_id){
+    res.json({success: false, message: 'Please select customer'});
+  }
+
+  if(!data.products  || !data.products.length){
+    res.json({success: false, message: 'Invalid Products'});
+  }
+
+  if(!data.subtotal || data.subtotal < 0 || data.discount < 0 || data.shipping < 0 || data.total < 0){
+    res.json({success: false, message: 'Invalid Input'});
+  }
+
   data.products = data.products.map((item)=>{
     item.product_id = mongoose.Types.ObjectId(item.product_id);
     delete item._id;

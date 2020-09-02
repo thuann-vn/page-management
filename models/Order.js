@@ -21,5 +21,13 @@ const orderSchema = new mongoose.Schema({
   note: String,
 }, { timestamps: true });
 
+
+orderSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+      ret.id = ret._id;
+      delete ret._id;
+  }
+}); 
+
 const Order = mongoose.model('Orders', orderSchema);
 module.exports = Order;

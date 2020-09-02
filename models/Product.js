@@ -7,8 +7,18 @@ const productSchema = new mongoose.Schema({
   imageObj: {},
   price: Number,
   page_id: String,
-  user_id: String
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
+
+productSchema.set('toJSON', {
+  transform: function (doc, ret, options) {
+      ret.id = ret._id;
+      delete ret._id;
+  }
+}); 
+
+//Index
+productSchema.index({ name: 'text' }); 
 
 const Product = mongoose.model('Products', productSchema);
 

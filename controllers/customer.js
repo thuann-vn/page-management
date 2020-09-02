@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
 const Tag = require('../models/Tags');
+const mongoose = require('mongoose');
 
 /**
  * GET /api/customer/:id
@@ -7,7 +8,7 @@ const Tag = require('../models/Tags');
  */
 exports.getCustomer = async (req, res) => {
   const { id } = req.params;
-  const customer = await Customer.findOne({ id: id, user_id: req.user.id });
+  const customer = await Customer.findOne({ _id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
   res.json(customer);
 };
 
@@ -18,7 +19,7 @@ exports.getCustomer = async (req, res) => {
 exports.updateCustomer = async (req, res) => {
   const { id } = req.params;
   const updateFields = req.body;
-  const customer = await Customer.findOne({ id: id, user_id: req.user.id });
+  const customer = await Customer.findOne({ _id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
   if(updateFields.email){
     customer.email = updateFields.email;
   }
@@ -38,11 +39,13 @@ exports.updateCustomer = async (req, res) => {
  */
 exports.getCustomerTags = async (req, res) => {
   const { id } = req.params;
-  const customer = await Customer.findOne({ id: id, user_id: req.user.id });
-  const tagIds = customer.tags || [];
-  if (tagIds && tagIds.length) {
-    const tags = await Tag.find({ user_id: req.user.id, _id: { $in: tagIds } }).sort({ createdAt: 1 }).exec();
-    res.json(tags);
+  const customer = await Customer.findOne({ _id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
+  if(customer){
+    const tagIds = customer.tags || [];
+    if (tagIds && tagIds.length) {
+      const tags = await Tag.find({ user_id: mongoose.Types.ObjectId(req.user.id), _id: { $in: tagIds } }).sort({ createdAt: 1 }).exec();
+      res.json(tags);
+    }
   }
   res.json([]);
 };
@@ -54,18 +57,18 @@ exports.getCustomerTags = async (req, res) => {
 exports.updateCustomerTags = async (req, res) => {
   const { id } = req.params;
   var { tags = [] } = req.body;
-  const customer = await Customer.findOne({ user_id: req.user.id, id });
+  const customer = await Customer.findOne({ user_id: mongoose.Types.ObjectId(req.user.id), id });
   var customerTags = [];
 
   //Get have name only
   tags = tags.filter((item)=>item.name);
   for (var i = 0; i < tags.length; i++) {
     var element = tags[i];
-    var tag = await Tag.findOne({ name: element.name, user_id: req.user.id });
+    var tag = await Tag.findOne({ name: element.name, user_id: mongoose.Types.ObjectId(req.user.id) });
     if(!tag){
       tag = await Tag.create({
         name: element.name,
-        user_id: req.user.id
+        user_id: mongoose.Types.ObjectId(req.user.id)
       });
     }
     customerTags.push(tag._id);

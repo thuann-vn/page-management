@@ -20,8 +20,8 @@ exports.facebookLogin = async (req, res, done) => {
                     if (err) { return done(err); }
                     user.facebook = profile.id;
                     user.tokens.push({ kind: 'facebook', accessToken });
-                    user.profile.name = user.profile.name || `${profile.name.givenName} ${profile.name.familyName}`;
-                    user.profile.gender = user.profile.gender || profile._json.gender;
+                    user.profile.name = user.profile.name || profile.name;
+                    user.profile.gender = user.profile.gender || profile.gender;
                     user.profile.picture = user.profile.picture || `https://graph.facebook.com/${profile.id}/picture?type=large`;
                     user.save((err) => {
                         return loginAsUser(req, res, user);
@@ -38,27 +38,30 @@ exports.facebookLogin = async (req, res, done) => {
             if (existingUser) {
                 return loginAsUser(req, res, existingUser);
             }
-            User.findOne({ email: profile._json.email }, (err, existingEmailUser) => {
+            User.findOne({ email: profile.email }, (err, existingEmailUser) => {
                 if (err) {
                     return authFailed(res, err);
                 }
+                console.log('Existed email',existingEmailUser);
                 if (existingEmailUser) {
                     return authFailed(res, err);
                 } else {
                     const user = new User();
-                    user.email = profile._json.email;
+                    user.email = profile.email;
                     user.facebook = profile.id;
-                    user.tokens.push({ kind: 'facebook', accessToken });
-                    user.profile.name = `${profile.name.givenName} ${profile.name.familyName}`;
-                    user.profile.gender = profile._json.gender;
+                    user.tokens.push({ kind: 'facebook', accessToken: profile.accessToken });
+                    user.profile.name = profile.name;
+                    user.profile.gender = profile.gender;
                     user.profile.picture = `https://graph.facebook.com/${profile.id}/picture?type=large`;
-                    user.profile.location = (profile._json.location) ? profile._json.location.name : '';
-                    user.save((err) => {
+                    user.profile.location = (profile.location) ? profile.location.name : '';
+                    console.log('SAVING PROFILE ');
+                    user.save((err, doc) => {
                         if (err) {
+                            console.log('Save error',err);
                             return authFailed(res, err);
                         }
-                        
-                        return loginAsUser(req, res, existingUser);
+                        console.log('SAVING PROFILE ');
+                        return loginAsUser(req, res, doc);
                     });
                 }
             });
