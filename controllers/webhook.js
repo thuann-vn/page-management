@@ -59,10 +59,10 @@ exports.receivedWebhook = async (req, res) => {
           return;
         }
         // Get the sender PSID
-        let sender_psid = webhook_event.sender.id;
-        Page.findOne({ id: { $in: [webhook_event.sender.id, webhook_event.recipient.id] } }, function (err, page) {
+        let sender_psid = webhook_event.sender._id;
+        Page.findOne({ id: { $in: [webhook_event.sender._id, webhook_event.recipient._id] } }, function (err, page) {
           if (!err && page) {
-            var customerId = page.id == webhook_event.recipient.id ? webhook_event.sender.id : webhook_event.recipient.id;
+            var customerId = page._id == webhook_event.recipient._id ? webhook_event.sender._id : webhook_event.recipient._id;
             var refCustomer = null;
             Customer.findOne({ id: customerId }, (err, customer) => {
               if (!customer) {
@@ -80,9 +80,9 @@ exports.receivedWebhook = async (req, res) => {
 
             Facebook.getThreadByUserId(page.access_token, customerId).then(function (thread) {
               //Check if thread is existed
-              Thread.findOne({ id: thread.id }, function (err, data) {
+              Thread.findOne({ id: thread._id }, function (err, data) {
                 if (err || !data) {
-                  thread.page_id = page.id;
+                  thread.page_id = page._id;
                   thread.customer_id = customerId;
 
                   Thread.create({
@@ -100,8 +100,8 @@ exports.receivedWebhook = async (req, res) => {
               })
 
               Facebook.getMessageById(page.access_token, webhook_event.message.mid).then(function (message) {
-                message.thread_id = thread.id;
-                message.page_id = page.id;
+                message.thread_id = thread._id;
+                message.page_id = page._id;
                 message.customer_id = customerId;
                 message.type = MessageTypes.chat;
 
@@ -115,7 +115,7 @@ exports.receivedWebhook = async (req, res) => {
                 pusher.trigger('notifications', 'message.new', { thread: refCustomer, message });
 
                 //Create or update message
-                Message.findOne({ id: message.id }, function (err, data) {
+                Message.findOne({ id: message._id }, function (err, data) {
                   if (err || !data) {
                     Message.create({
                       ...message

@@ -29,7 +29,9 @@ const https = require("https");
   
 // });
 
-const upload = multer({ dest: path.join(__dirname, 'uploads') });
+const upload = multer({ 
+  dest: path.join(__dirname, 'uploads')
+});
 
 /**
  * Load environment variables from .env file, where API keys and passwords are configured.
@@ -47,6 +49,8 @@ const facebookController = require('./controllers/facebook');
 const webHookController = require('./controllers/webhook');
 const customerController = require('./controllers/customer');
 const tagController = require('./controllers/tag');
+const productController = require('./controllers/product');
+const orderController = require('./controllers/order');
 
 /**
  * API keys and Passport configuration.
@@ -86,6 +90,7 @@ app.use(sass({
   src: path.join(__dirname, 'public'),
   dest: path.join(__dirname, 'public')
 }));
+app.use(express.static('uploads'));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -119,7 +124,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
 app.use(cors())
 app.use(responseTime());
 
@@ -170,6 +174,21 @@ app.get('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.getTag
 app.post('/api/tags', passportConfig.isJwtAuthenticated, tagController.createTag);
 app.put('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.updateTag);
 app.delete('/api/tags/:id', passportConfig.isJwtAuthenticated, tagController.deleteTag);
+
+// Product
+app.get('/api/products', passportConfig.isJwtAuthenticated, productController.getProductList);
+app.get('/api/products/:id', passportConfig.isJwtAuthenticated, productController.getProduct);
+app.post('/api/products', upload.single('image'), passportConfig.isJwtAuthenticated, productController.createProduct);
+app.put('/api/products/:id', passportConfig.isJwtAuthenticated, productController.updateProduct);
+app.delete('/api/products/:id', passportConfig.isJwtAuthenticated, productController.deleteProduct);
+
+// Order
+app.get('/api/orders', passportConfig.isJwtAuthenticated, orderController.getOrder);
+app.get('/api/orders/:id', passportConfig.isJwtAuthenticated, orderController.createOrder);
+app.post('/api/orders', passportConfig.isJwtAuthenticated, orderController.createOrder);
+app.put('/api/orders/:id', passportConfig.isJwtAuthenticated, productController.updateProduct);
+app.delete('/api/orders/:id', passportConfig.isJwtAuthenticated, productController.deleteProduct);
+
 
 /**
  * Error Handler.

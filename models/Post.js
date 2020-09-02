@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const postSchema = new mongoose.Schema({
-  id: { type: String, unique: true },
+  _id: { type: String, unique: true },
   page_id: String,
   message: String,
   created_time: String,

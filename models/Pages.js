@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const pageSchema = new mongoose.Schema({
-  id: { type: String, unique: true },
+  _id: { type: String, unique: true },
   user_id: String,
   isDefault: Boolean,
   access_token: String,
