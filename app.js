@@ -183,11 +183,10 @@ app.put('/api/products/:id', passportConfig.isJwtAuthenticated, productControlle
 app.delete('/api/products/:id', passportConfig.isJwtAuthenticated, productController.deleteProduct);
 
 // Order
-app.get('/api/orders', passportConfig.isJwtAuthenticated, orderController.getOrder);
-app.get('/api/orders/:id', passportConfig.isJwtAuthenticated, orderController.createOrder);
-app.post('/api/orders', passportConfig.isJwtAuthenticated, orderController.createOrder);
-app.put('/api/orders/:id', passportConfig.isJwtAuthenticated, productController.updateProduct);
-app.delete('/api/orders/:id', passportConfig.isJwtAuthenticated, productController.deleteProduct);
+app.get('/api/orders', passportConfig.isJwtAuthenticated, orderController.getList);
+app.get('/api/orders/:id', passportConfig.isJwtAuthenticated, orderController.getDetail);
+app.post('/api/orders', passportConfig.isJwtAuthenticated, orderController.create);
+app.put('/api/orders/:id', passportConfig.isJwtAuthenticated, orderController.update);
 
 
 /**

@@ -1,22 +1,23 @@
 const Order = require('../models/Order');
 const Tag = require('../models/Tags');
 const mongoose = require('mongoose');
+const { getNextOrderId, OrderService } = require('../services/order');
 
 /**
- * GET /api/order/:id
+ * GET /api/orders/:id
  * Get order by id
  */
-exports.getOrder = async (req, res) => {
+exports.getDetail = async (req, res) => {
   const { id } = req.params;
   const order = await Order.populate('').findOne({ id: id, user_id: req.user.id });
   res.json(order);
 };
 
 /**
- * POST /api/order/:id
+ * POST /api/orders
  * Create order
  */
-exports.createOrder = async (req, res) => {
+exports.create = async (req, res) => {
   var data = req.body;
 
   //Validate data
@@ -40,6 +41,7 @@ exports.createOrder = async (req, res) => {
   });
   const order = new Order({
     ...data,
+    order_code: await OrderService.getNextOrderId(req.user.id),
     user_id: mongoose.Types.ObjectId(req.user.id),
     customer_id: data.customer_id,
   });
@@ -48,10 +50,10 @@ exports.createOrder = async (req, res) => {
 };
 
 /**
- * PUT /api/order/:id
+ * PUT /api/orders/:id
  * Update order
  */
-exports.updateOrder = async (req, res) => {
+exports.update = async (req, res) => {
   const { id } = req.params;
   const updateFields = req.body;
   const order = await Order.findOne({ id: id, user_id: req.user.id });
@@ -69,22 +71,19 @@ exports.updateOrder = async (req, res) => {
 };
 
 /**
- * GET /api/order/:id/tags
+ * GET /api/orders
  * Get order tags
  */
-exports.getOrderTags = async (req, res) => {
-  const { id } = req.params;
-  const order = await Order.findOne({ id: id, user_id: req.user.id });
-  const tagIds = order.tags || [];
-  if (tagIds && tagIds.length) {
-    const tags = await Tag.find({ user_id: req.user.id, _id: { $in: tagIds } }).sort({ createdAt: 1 }).exec();
-    res.json(tags);
-  }
-  res.json([]);
+exports.getList = async (req, res) => {
+  const { customer_id } = req.query;
+  const conditions = { customer_id: customer_id, user_id: mongoose.Types.ObjectId(req.user.id) }
+
+  const orders = await Order.find(conditions).populate('products.product_id');
+  res.json(orders);
 };
 
 /**
- * POST /api/order/:id/tags
+ * POST /api/orders/:id/tags
  * Update order tags
  */
 exports.updateOrderTags = async (req, res) => {
