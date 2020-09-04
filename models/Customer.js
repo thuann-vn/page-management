@@ -16,7 +16,7 @@ const customerSchema = new mongoose.Schema({
   address: String,
   note: String,
   note_updated_time: Date
-}, { timestamps: false });
+}, { timestamps: true });
 
 customerSchema.set('toJSON', {
   transform: function (doc, ret, options) {

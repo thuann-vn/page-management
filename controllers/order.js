@@ -2,7 +2,9 @@ const Order = require('../models/Order');
 const Tag = require('../models/Tags');
 const mongoose = require('mongoose');
 const { getNextOrderId, OrderService } = require('../services/order');
-
+const { CustomerService } = require('../services/customer');
+const CustomerActivities = require('../models/CustomerActivity');
+const { CustomerActionTypes } = require('../constants');
 /**
  * GET /api/orders/:id
  * Get order by id
@@ -46,6 +48,10 @@ exports.create = async (req, res) => {
     customer_id: data.customer_id,
   });
   var result = await order.save();
+
+  //Save customer service
+  CustomerService.addCustomerActivity(data.customer_id, CustomerActionTypes.CREATED_ORDER, {id: order._id, total: order.total})
+
   res.json({success: result, data: result});
 };
 
