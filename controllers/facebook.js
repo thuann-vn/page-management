@@ -257,7 +257,8 @@ exports.postMessage = async (req, res, next) => {
   const message = req.body.message;
   const uuid = req.body.uuid;
   const pageId = customer.page_id;
-  const customerId = customer._id;
+  const customerId = customer.id;
+  console.log('POST MESSAGE', req.body);
 
   if (!message || !customer) {
     return res.json(false);
@@ -265,6 +266,7 @@ exports.postMessage = async (req, res, next) => {
 
   var token = await this.getPageToken(pageId);
   if (!token) {
+    console.log('GET TOKEN ERROR', token);
     return res.json({ success: false });
   }
   var messageBody = {
@@ -277,13 +279,14 @@ exports.postMessage = async (req, res, next) => {
   }
 
   graph.setAccessToken(token);
-  console.log(pageId);
   graph.post(`${pageId}/messages`, messageBody, (err, result) => {
     if (err) {
       console.error(err);
       next(err);
       return;
     }
+
+    console.log('POST RESULT', result);
 
     Facebook.getThreadByUserId(token, customerId).then(function (thread) {//Check if thread is existed
       Thread.findOne({ id: thread._id }, function (err, data) {
@@ -409,7 +412,7 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
 
 exports.getPageToken = async (pageId) => {
   //Get page token
-  var page = await Page.findOne({ id: pageId });
+  var page = await Page.findById(pageId);
   if (!page) {
     return null;
   }
