@@ -64,7 +64,7 @@ exports.receivedWebhook = async (req, res) => {
           if (!err && page) {
             var customerId = page._id == webhook_event.recipient.id ? webhook_event.sender.id : webhook_event.recipient.id;
             var refCustomer = null;
-            Customer.findById({  customerId }, (err, customer) => {
+            Customer.findById(customerId, (err, customer) => {
               if (!customer) {
                 Facebook.getPageUserById(page.access_token, customerId).then(function (res) {
                   if (res) {
@@ -113,7 +113,7 @@ exports.receivedWebhook = async (req, res) => {
                   refCustomer.save();
                 }
                 
-                pusher.trigger('notifications.' + page.user_id, 'message.new', { thread: refCustomer, message });
+                pusher.trigger('notifications.' + page.user_id, 'message.new', { thread: refCustomer, message, page_id: page._id });
 
                 //Create or update message
                 Message.findById({ id: message.id }, function (err, data) {
