@@ -51,6 +51,7 @@ const customerController = require('./controllers/customer');
 const tagController = require('./controllers/tag');
 const productController = require('./controllers/product');
 const orderController = require('./controllers/order');
+const pageController = require('./controllers/page');
 
 /**
  * API keys and Passport configuration.
@@ -161,6 +162,9 @@ app.post('/api/auth/facebook', authController.facebookLogin);
  */
 app.post('/api/account/complete-setup', passportConfig.isJwtAuthenticated, userController.postCompleteSetup);
 app.get('/api/account/get-setup-status', passportConfig.isJwtAuthenticated, userController.getSetupStatus);
+
+// Page
+app.get('/api/pages', passportConfig.isJwtAuthenticated, pageController.getPageList);
 
 // Customer
 app.get('/api/customer/:id', passportConfig.isJwtAuthenticated, customerController.getCustomer);

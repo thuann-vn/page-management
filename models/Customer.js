@@ -14,8 +14,8 @@ const customerSchema = new mongoose.Schema({
   tags: Array,
   phone: String,
   address: String,
-  note: String,
-  note_updated_time: Date
+  notes: String,
+  notes_updated_time: Date
 }, { timestamps: true });
 
 customerSchema.set('toJSON', {

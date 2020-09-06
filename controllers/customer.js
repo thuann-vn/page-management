@@ -29,6 +29,10 @@ exports.updateCustomer = async (req, res) => {
   if(updateFields.address){
     customer.address = updateFields.address;
   }
+  if(updateFields.notes){
+    customer.notes = updateFields.notes;
+    customer.notes_updated_time = new Date()
+  }
   customer.save();
   res.json({success: true});
 };

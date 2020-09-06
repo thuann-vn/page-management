@@ -5,6 +5,8 @@ const { getNextOrderId, OrderService } = require('../services/order');
 const { CustomerService } = require('../services/customer');
 const CustomerActivities = require('../models/CustomerActivity');
 const { CustomerActionTypes } = require('../constants');
+const { pusher } = require('../services/pusher');
+
 /**
  * GET /api/orders/:id
  * Get order by id
@@ -50,7 +52,8 @@ exports.create = async (req, res) => {
   var result = await order.save();
 
   //Save customer service
-  CustomerService.addCustomerActivity(data.customer_id, CustomerActionTypes.CREATED_ORDER, {id: order._id, total: order.total})
+  CustomerService.addCustomerActivity(data.customer_id, CustomerActionTypes.CREATED_ORDER, {id: result._id, total: result.total})
+  pusher.trigger('notifications_'  + req.user_id, 'order.new', { order: result });
 
   res.json({success: result, data: result});
 };

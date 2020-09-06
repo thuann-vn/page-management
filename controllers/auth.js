@@ -19,10 +19,11 @@ exports.facebookLogin = async (req, res, done) => {
                 User.findById(req.user.id, (err, user) => {
                     if (err) { return done(err); }
                     user.facebook = profile.id;
-                    user.tokens.push({ kind: 'facebook', accessToken });
+                    user.tokens.push({ kind: 'facebook', accessToken: profile.accessToken });
                     user.profile.name = user.profile.name || profile.name;
                     user.profile.gender = user.profile.gender || profile.gender;
                     user.profile.picture = user.profile.picture || `https://graph.facebook.com/${profile.id}/picture?type=large`;
+                    console.log('UPDATING USER',profile,user);
                     user.save((err) => {
                         return loginAsUser(req, res, user);
                     });
@@ -36,6 +37,22 @@ exports.facebookLogin = async (req, res, done) => {
                 return authFailed(res, err);
             }
             if (existingUser) {
+                //Update token
+                if(existingUser.tokens && existingUser.tokens.length){
+                    existingUser.tokens = existingUser.tokens.map((token)=>{
+                        console.log(token);
+                        if(token && token.kind == 'facebook'){
+                            token.accessToken = profile.accessToken
+                        }
+                        return token;
+                    })
+                }else{
+                    existingUser.tokens = [];
+                    existingUser.tokens.push({ kind: 'facebook', accessToken: profile.accessToken });
+                }
+                existingUser.save();
+
+                //Login success
                 return loginAsUser(req, res, existingUser);
             }
             User.findOne({ email: profile.email }, (err, existingEmailUser) => {

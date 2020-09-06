@@ -10,11 +10,17 @@ const Customer = require('../models/Customer');
 const fbgraph = require('fbgraph');
 const { Facebook } = require('../services/facebook');
 const mongoose = require('mongoose');
+const { error } = require('jquery');
 
 exports.pages = async (req, res) => {
   this.getFacebookToken(req);
   graph.get(`${req.user.facebook}/accounts`, (err, pages) => {
-    res.json(pages.data);
+    if(err){
+      console.error('Get page ', err);
+      res.json([]);
+    }else{
+      res.json(pages.data);
+    }
   })
 }
 
@@ -35,10 +41,10 @@ exports.setupPage = async (req, res, next) => {
     }
     
     //Syncs threads
-    this.getThreadAndMessages(pageData, userId)
+    await this.getThreadAndMessages(pageData, userId)
   
     //Sync posts
-    this.getPostAndComments(pageData, userId)
+    await this.getPostAndComments(pageData, userId)
   
     res.json(pageData);
   }catch(err){
@@ -50,8 +56,13 @@ exports.setupPage = async (req, res, next) => {
  * Facebook API example.
  */
 exports.threads = async (req, res, next) => {
-  var pages = await Page.find({user_id: mongoose.Types.ObjectId(req.user.id)});
-  var pageIds = pages.map(page => page._id);
+  var pageIds = [];
+  if(req.query.page_id){
+    pageIds = [req.query.page_id];
+  }else{
+    var pages = await Page.find({user_id: mongoose.Types.ObjectId(req.user.id)});
+    pageIds = pages.map(page => page._id);
+  }
 
   //Try to get from database
   var data = await Customer.find({ page_id: {$in: pageIds} }).sort({ updated_time: -1 }).exec();
@@ -362,6 +373,7 @@ exports.getThread = async (threadId) => {
 }
 
 exports.getFacebookToken = (req) => {
+  console.log(req.user.tokens);
   const token = req.user.tokens.find((token) => token.kind === 'facebook');
   graph.setAccessToken(token.accessToken);
 }
