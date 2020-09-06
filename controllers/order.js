@@ -53,7 +53,7 @@ exports.create = async (req, res) => {
 
   //Save customer service
   CustomerService.addCustomerActivity(data.customer_id, CustomerActionTypes.CREATED_ORDER, {id: result._id, total: result.total})
-  pusher.trigger('notifications_'  + req.user_id, 'order.new', { order: result });
+  pusher.trigger('notifications.'  + req.user.id, 'order.new', { order: result });
 
   res.json({success: result, data: result});
 };

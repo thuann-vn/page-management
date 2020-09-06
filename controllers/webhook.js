@@ -59,16 +59,16 @@ exports.receivedWebhook = async (req, res) => {
           return;
         }
         // Get the sender PSID
-        let sender_psid = webhook_event.sender._id;
-        Page.findOne({ id: { $in: [webhook_event.sender._id, webhook_event.recipient._id] } }, function (err, page) {
+        let sender_psid = webhook_event.sender.id;
+        Page.findOne({ _id: { $in: [webhook_event.sender.id, webhook_event.recipient.id] } }, function (err, page) {
           if (!err && page) {
-            var customerId = page._id == webhook_event.recipient._id ? webhook_event.sender._id : webhook_event.recipient._id;
+            var customerId = page._id == webhook_event.recipient.id ? webhook_event.sender.id : webhook_event.recipient.id;
             var refCustomer = null;
-            Customer.findOne({ id: customerId }, (err, customer) => {
+            Customer.findById({  customerId }, (err, customer) => {
               if (!customer) {
                 Facebook.getPageUserById(page.access_token, customerId).then(function (res) {
                   if (res) {
-                    Customer.create({ ...res, avatar: res.profile_pic, name: `${res.last_name} ${res.first_name}` }, (err, res) => {
+                    Customer.create({ ...res, _id: customerId, avatar: res.profile_pic, name: `${res.last_name} ${res.first_name}` }, (err, res) => {
                       refCustomer = res;
                     });
                   }
@@ -80,12 +80,13 @@ exports.receivedWebhook = async (req, res) => {
 
             Facebook.getThreadByUserId(page.access_token, customerId).then(function (thread) {
               //Check if thread is existed
-              Thread.findOne({ id: thread._id }, function (err, data) {
+              Thread.findById(thread.id, function (err, data) {
                 if (err || !data) {
                   thread.page_id = page._id;
                   thread.customer_id = customerId;
 
                   Thread.create({
+                    _id: thread.id,
                     ...thread
                   });
 
@@ -94,7 +95,7 @@ exports.receivedWebhook = async (req, res) => {
                   data.updated_time = thread.updated_time;
                   data.snippet = thread.snippet;
                   data.unread_count = thread.unread_count;
-                  pusher.trigger('notifications', 'thread.update', data);
+                  pusher.trigger('notifications.' + page.user_id, 'thread.update', data);
                   data.save();
                 }
               })
@@ -112,12 +113,13 @@ exports.receivedWebhook = async (req, res) => {
                   refCustomer.save();
                 }
                 
-                pusher.trigger('notifications', 'message.new', { thread: refCustomer, message });
+                pusher.trigger('notifications.' + page.user_id, 'message.new', { thread: refCustomer, message });
 
                 //Create or update message
-                Message.findOne({ id: message._id }, function (err, data) {
+                Message.findById({ id: message.id }, function (err, data) {
                   if (err || !data) {
                     Message.create({
+                      _id: message.id,
                       ...message
                     }, function (err) {
                       if (err) {
