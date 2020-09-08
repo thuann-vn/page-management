@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const { getNextOrderId, OrderService } = require('../services/order');
 const { CustomerService } = require('../services/customer');
 const CustomerActivities = require('../models/CustomerActivity');
-const { CustomerActionTypes } = require('../constants');
+const { CustomerActionTypes, OrderStatuses, PaymentStatuses } = require('../constants');
 const { pusher } = require('../services/pusher');
 
 /**
@@ -29,6 +29,10 @@ exports.create = async (req, res) => {
     res.json({success: false, message: 'Please select customer'});
   }
 
+  if(!data.page_id){
+    res.json({success: false, message: 'Invalid page id'});
+  }
+
   if(!data.products  || !data.products.length){
     res.json({success: false, message: 'Invalid Products'});
   }
@@ -48,6 +52,8 @@ exports.create = async (req, res) => {
     order_code: await OrderService.getNextOrderId(req.user.id),
     user_id: mongoose.Types.ObjectId(req.user.id),
     customer_id: data.customer_id,
+    status: OrderStatuses.NEW,
+    payment_status: PaymentStatuses.PENDING
   });
   var result = await order.save();
 
@@ -84,10 +90,15 @@ exports.update = async (req, res) => {
  * Get order tags
  */
 exports.getList = async (req, res) => {
-  const { customer_id } = req.query;
-  const conditions = { customer_id: customer_id, user_id: mongoose.Types.ObjectId(req.user.id) }
-
-  const orders = await Order.find(conditions).populate('products.product_id');
+  const { customer_id, page_id } = req.query;
+  var conditions = { user_id: mongoose.Types.ObjectId(req.user.id) }
+  if(customer_id){
+    conditions.customer_id = customer_id;
+  }
+  if(page_id){
+    conditions.page_id = page_id;
+  }
+  const orders = await Order.find(conditions).populate('products.product_id').populate('customer_id');
   res.json(orders);
 };
 
