@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
 const Tag = require('../models/Tags');
+const CustomerActivity = require('../models/CustomerActivity');
 const mongoose = require('mongoose');
 
 /**
@@ -80,4 +81,14 @@ exports.updateCustomerTags = async (req, res) => {
   customer.tags = customerTags;
   customer.save();
   res.json({success: true, data: customerTags});
+};
+
+/**
+ * POST /api/customer/:id/activities
+ * Get customer activities
+ */
+exports.getCustomerActivities = async (req, res) => {
+  const { id } = req.params;
+  const activities = await CustomerActivity.find({ customer_id: id });
+  res.json({success: true, data: activities});
 };
