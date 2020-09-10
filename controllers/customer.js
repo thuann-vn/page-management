@@ -10,7 +10,19 @@ const mongoose = require('mongoose');
 exports.getCustomer = async (req, res) => {
   const { id } = req.params;
   const customer = await Customer.findOne({ _id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
-  res.json(customer);
+  var result = customer.toJSON();
+  //Get tags
+  const tagIds = customer.tags || [];
+  if (tagIds && tagIds.length) {
+    const tags = await Tag.find({ user_id: mongoose.Types.ObjectId(req.user.id), _id: { $in: tagIds } }).sort({ createdAt: 1 }).exec();
+    result.tags = customer;
+  }
+
+  //Get activities
+  const activities = await CustomerActivity.find({ customer_id: id }).sort({createdAt: -1}).exec();
+  result.activities = activities;
+  
+  res.json(result);
 };
 
 /**
