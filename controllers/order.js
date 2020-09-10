@@ -98,7 +98,7 @@ exports.getList = async (req, res) => {
   if(page_id){
     conditions.page_id = page_id;
   }
-  const orders = await Order.find(conditions).populate('products.product_id').populate('customer_id');
+  const orders = await Order.find(conditions).sort({created: -1}).populate('products.product_id').populate('customer_id');
   res.json(orders);
 };
 

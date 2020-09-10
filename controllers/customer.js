@@ -62,7 +62,7 @@ exports.getCustomerTags = async (req, res) => {
 exports.updateCustomerTags = async (req, res) => {
   const { id } = req.params;
   var { tags = [] } = req.body;
-  const customer = await Customer.findOne({ user_id: mongoose.Types.ObjectId(req.user.id), id });
+  const customer = await Customer.findOne( { _id: id,user_id: mongoose.Types.ObjectId(req.user.id) });
   var customerTags = [];
 
   //Get have name only
