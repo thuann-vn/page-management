@@ -26,6 +26,7 @@ messageSchema.set('toJSON', {
 }); 
 
 messageSchema.index({ customer_id: 1 }); 
+messageSchema.index({ page_id: 1 }); 
 
 const Message = mongoose.model('Messages', messageSchema);
 

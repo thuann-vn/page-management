@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
 const Tag = require('../models/Tags');
+const mongoose = require('mongoose');
 
 
 /**
@@ -10,7 +11,7 @@ exports.getTagList = async (req, res) => {
   var { excludes = '' } = req.query;
   excludes = excludes.split(',');
   const tags = await Tag.find({
-    user_id: req.user.id, id: {
+    user_id: mongoose.Types.ObjectId(req.user.id), id: {
       $nin: excludes
     }
   });
@@ -23,7 +24,7 @@ exports.getTagList = async (req, res) => {
  */
 exports.getTag = async (req, res) => {
   const { id } = req.params;
-  const tag = await Tag.findOne({ id: id, user_id: req.user.id });
+  const tag = await Tag.findOne({ id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
   res.json(tag);
 };
 
@@ -33,7 +34,7 @@ exports.getTag = async (req, res) => {
  */
 exports.createTag = async (req, res) => {
   const { name, color } = req.body;
-  const tag = await Tag.create({ name, color, user_id: req.user.id });
+  const tag = await Tag.create({ name, color, user_id: mongoose.Types.ObjectId(req.user.id) });
   res.json(tag);
 };
 
@@ -43,7 +44,7 @@ exports.createTag = async (req, res) => {
  */
 exports.updateTag = async (req, res) => {
   const { id } = req.params;
-  const tag = await Tag.findById({ _id: id, user_id: req.user.id });
+  const tag = await Tag.findById({ _id: id, user_id: mongoose.Types.ObjectId(req.user.id) });
   if(req.body.color){
     tag.color = req.body.color;
   }

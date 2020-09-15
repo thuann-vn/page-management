@@ -8,5 +8,7 @@ const tagSchema = new mongoose.Schema({
   position: Number
 }, { timestamps: true });
 
+tagSchema.index({ user_id: 1 }); 
+
 const Tag = mongoose.model('Tags', tagSchema);
 module.exports = Tag;

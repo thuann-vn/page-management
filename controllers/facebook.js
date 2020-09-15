@@ -11,43 +11,44 @@ const fbgraph = require('fbgraph');
 const { Facebook } = require('../services/facebook');
 const mongoose = require('mongoose');
 const { error } = require('jquery');
+const { result } = require('lodash');
 
 exports.pages = async (req, res) => {
   this.getFacebookToken(req);
   graph.get(`${req.user.facebook}/accounts`, (err, pages) => {
-    if(err){
+    if (err) {
       console.error('Get page ', err);
       res.json([]);
-    }else{
+    } else {
       res.json(pages.data);
     }
   })
 }
 
 exports.setupPage = async (req, res, next) => {
-  try{
+  try {
     const page = req.body;
     const userId = mongoose.Types.ObjectId(req.user.id);
     pageAccessToken = await this.getPageAccessToken(page.access_token);
-  
+
     //Create pages
     var pageData = await Page.findById(page.id);
-    if(!pageData){
+    if (!pageData) {
       pageData = new Page(page);
       pageData._id = page.id;
       pageData.user_id = userId;
       pageData.access_token = pageAccessToken;
-      pageData.save();  
+      pageData.save();
     }
-    
+
     //Syncs threads
     await this.getThreadAndMessages(pageData, userId)
-  
+
     //Sync posts
     await this.getPostAndComments(pageData, userId)
-  
+
     res.json(pageData);
-  }catch(err){
+  } catch (err) {
     next(err);
   }
 }
@@ -56,24 +57,19 @@ exports.setupPage = async (req, res, next) => {
  * Facebook API example.
  */
 exports.threads = async (req, res, next) => {
-  var pageIds = [];
-  if(req.query.page_id){
-    pageIds = [req.query.page_id];
-  }else{
-    var pages = await Page.find({user_id: mongoose.Types.ObjectId(req.user.id)});
-    pageIds = pages.map(page => page._id);
-  }
+  const pageId = req.query.page_id;
+  //Run fetch threads
+  var pageData = await Page.findById(pageId);
+  const userId = mongoose.Types.ObjectId(req.user.id);
+  await this.getThreadAndMessages(pageData, userId, false)
 
   //Try to get from database
-  var data = await Customer.find({ page_id: {$in: pageIds} }).sort({ updated_time: -1 }).exec();
-  data = data.filter((item) =>{
-    return pageIds.indexOf(item._id) == -1;
-  });
+  var data = await Customer.find({ _id: { $nin: [pageId] }, page_id: { $in: pageId } }).sort({ last_update: -1 }).exec();
   return res.json(data);
 };
 
 // Get post and commends of a page
-exports.getPostAndComments = async (page, userId)=>{
+exports.getPostAndComments = async (page, userId) => {
   graph.setAccessToken(page.access_token);
   const posts = await this.getPosts();
   if (posts.data) {
@@ -84,14 +80,14 @@ exports.getPostAndComments = async (page, userId)=>{
 
       //Sync comments
       const comments = await this.getComments(post._id);
-      if(comments && comments.data){
+      if (comments && comments.data) {
         comments.data.map((comment) => {
-          if(!comment.from) return;
+          if (!comment.from) return;
           comment.post_id = post._id;
           comment.type = MessageTypes.comment;
           comment.customer_id = comment.from.id;
-          Message.findOne({_id: comment._id}).then(doc => {
-            if(!doc){
+          Message.findOne({ _id: comment._id }).then(doc => {
+            if (!doc) {
               Message.create(comment);
               return;
             }
@@ -100,15 +96,15 @@ exports.getPostAndComments = async (page, userId)=>{
             doc.save();
           });
 
-          if(comment.comment_count && comment.comments){
-            comment.comments.data.map((reply)=>{
-              if(!reply.from) return;
+          if (comment.comment_count && comment.comments) {
+            comment.comments.data.map((reply) => {
+              if (!reply.from) return;
               reply.post_id = post._id;
               reply.type = MessageTypes.comment;
               reply.customer_id = reply.from._id;
               reply.comment_id = comment._id;
               Message.findById(comment._id).then(doc => {
-                if(!doc){
+                if (!doc) {
                   Message.create(reply);
                   return;
                 }
@@ -120,7 +116,7 @@ exports.getPostAndComments = async (page, userId)=>{
 
               //Check customer
               Customer.findById(reply.from.id).then(doc => {
-                if(!doc){
+                if (!doc) {
                   var customer = {
                     ...comment.from,
                     user_id: userId,
@@ -135,7 +131,7 @@ exports.getPostAndComments = async (page, userId)=>{
 
           //Check customer
           Customer.findById(comment.from.id).then(doc => {
-            if(!doc){
+            if (!doc) {
               var customer = {
                 ...comment.from,
                 _id: comment.from.id,
@@ -153,13 +149,13 @@ exports.getPostAndComments = async (page, userId)=>{
 }
 
 //Get Thread and messages
-exports.getThreadAndMessages = async (page, userId) =>{
+exports.getThreadAndMessages = async (page, userId, isFetchMessage = true) => {
   graph.setAccessToken(page.access_token);
   const conversations = await this.getConversations(page._id);
+  console.log('Is Fetch message', isFetchMessage)
   if (conversations) {
     for (var i = 0; i < conversations.length; i++) {
-      var threadData = await this.getThread(conversations[i].id);
-      console.log('RUNNING THREAD', threadData);
+      var threadData = conversations[i];
       //Create customer first
       const threadUser = threadData.participants.data[0];
       const avatar = await this.getThreadAvatar(threadUser.id);
@@ -175,7 +171,7 @@ exports.getThreadAndMessages = async (page, userId) =>{
 
       //Check customer
       existedCustomer = await Customer.findById(customerData._id);
-      if(!existedCustomer){
+      if (!existedCustomer) {
         Customer.create(customerData);
       }
 
@@ -193,12 +189,16 @@ exports.getThreadAndMessages = async (page, userId) =>{
             data.save();
           }
         } else {
-          Thread.create(threadData, function (err, data) {});
+          Thread.create(threadData, function (err, data) {
+            threadData = data;
+          });
         }
       })
 
       //Sync message 
-      await this.syncThreadMessages(threadData);
+      if (isFetchMessage) {
+        await this.syncThreadMessages(threadData);
+      }
     }
   }
 }
@@ -217,34 +217,55 @@ exports.messages = async (req, res, next) => {
   try {
     var conditions = { customer_id: customerId };
     var total = await Message.countDocuments(conditions);
-    console.log(conditions);
-    var data = await Message.find(conditions).sort({ created_time: 1 }).limit(pageSize).skip(pageSize * (page-1)).exec();
+    var data = await Message.find(conditions).sort({ created_time: 1 }).limit(pageSize).skip(pageSize * (page - 1)).exec();
+
+    //Check if data is empty => try to load from facebook
+    if (data.length == 0) {
+      var thread = await Thread.findOne({ customer_id: customerId });
+      var token = await this.getPageToken(thread.page_id);
+      graph.setAccessToken(token);
+      var newMessages = await this.syncThreadMessages(thread, page);
+      console.log('Syns data', newMessages);
+      res.json({ data: newMessages, total: total });
+    }
+
     if (data && data.length) {
-      res.json({ data: data, total: total  });
+      res.json({ data: data, total: total });
       return;
     }
+
     res.json({ data: [], total: total });
   } catch (err) {
     console.log(err);
   }
 };
 
-exports.syncThreadMessages = async (thread) => {
-  const messages = await this.getThreadMessages(thread._id);
-  if (messages) {
-    messages.forEach(message => {
-      Message.findById(message.id, function (err, data) {
-        if (err || !data) {
-          message._id = message.id;
-          message.thread_id = thread._id;
-          message.customer_id = thread.customer_id;
-          message.type = MessageTypes.chat;
-          Message.create(message);
-        }
-      })
-    });
+exports.syncThreadMessages = async (thread, page = 1) => {
+  const { data, paging } = await this.getThreadMessages(thread._id, page);
+  var returnData = [];
+  if (data) {
+    for (var i = 0; i < data.length; i++) {
+      var message = data[i];
+      var existedMessage = await Message.findById(message.id);
+      if (!existedMessage) {
+        message._id = message.id;
+        message.thread_id = thread._id;
+        message.customer_id = thread.customer_id;
+        message.type = MessageTypes.chat;
+        existedMessage = await Message.create(message);
+      }
+
+      returnData.push(existedMessage);
+    }
   }
-  return messages;
+
+  if (page > 1) {
+    thread.next_paging = paging;
+  } else {
+    thread.last_paging = paging;
+  }
+  thread.save();
+  return data;
 }
 
 
@@ -309,7 +330,7 @@ exports.postMessage = async (req, res, next) => {
       })
 
       //Get message detail
-      Facebook.getMessageById(token, result.message_id).then((data)=>{
+      Facebook.getMessageById(token, result.message_id).then((data) => {
         var messageData = {
           ...data,
           customer_id: customerId,
@@ -317,10 +338,10 @@ exports.postMessage = async (req, res, next) => {
           thread_id: thread._id,
           type: MessageTypes.chat,
           uuid: uuid
-        } 
+        }
         Message.create(messageData);
-    
-        res.json({success: true, data:messageData});
+
+        res.json({ success: true, data: messageData });
       })
     });
   });
@@ -349,7 +370,7 @@ exports.getPageAccessToken = async (pageToken) => {
 
 exports.getConversations = async () => {
   var promise = new Promise((resolve) => {
-    graph.get(`me?fields=conversations`, (err, result) => {
+    graph.get(`me?fields=conversations{unread_count,participants,is_subscribed,snippet,updated_time}`, (err, result) => {
       if (err || result.error) {
         resolve(null);
         return;
@@ -381,11 +402,17 @@ exports.getFacebookToken = (req) => {
   graph.setAccessToken(token.accessToken);
 }
 
-exports.getThreadMessages = async (threadId, nextId = null) => {
+exports.getThreadMessages = async (threadId, page = 1) => {
+  var pageSize = 30;
+  var page = 1;
+  var offset = pageSize * (page-1);
   var promise = new Promise((resolve) => {
-    graph.get(`${nextId ? nextId : threadId}/messages?fields=sticker,message,from,created_time,tags,to,attachments,shares`, (err, result) => {
+    var url = `${threadId}/messages?fields=sticker,message,from,created_time,tags,to,attachments,shares&limit=${pageSize}&offset=${offset}`;
+    console.log(result);
+    graph.get(url, (err, result) => {
       if (err) {
-        resolve([]);
+        console.error('CAN NOT GET THREAD MESSAGES',err);
+        resolve({data: [], paging: null});
         return;
       }
       if (result.data) {
@@ -403,7 +430,7 @@ exports.getThreadMessages = async (threadId, nextId = null) => {
           return message;
         })
       }
-      resolve(result.data);
+      resolve({ data: result.data, paging: result.paging });
     });
   })
 

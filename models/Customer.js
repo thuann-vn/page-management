@@ -25,5 +25,8 @@ customerSchema.set('toJSON', {
   }
 }); 
 
+customerSchema.index({ page_id: 1 }); 
+customerSchema.index({ user_id: 1 }); 
+
 const Customer = mongoose.model('Customers', customerSchema);
 module.exports = Customer;

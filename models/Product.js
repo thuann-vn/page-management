@@ -19,6 +19,8 @@ productSchema.set('toJSON', {
 
 //Index
 productSchema.index({ name: 'text' }); 
+productSchema.index({ page_id: 1 }); 
+productSchema.index({ user_id: 1 }); 
 
 const Product = mongoose.model('Products', productSchema);
 

@@ -11,6 +11,8 @@ const postSchema = new mongoose.Schema({
   status_type: {},
 }, { timestamps: true });
 
+postSchema.index({ page_id: 1 }); 
+
 const Post = mongoose.model('Posts', postSchema);
 
 module.exports = Post;

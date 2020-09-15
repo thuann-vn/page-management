@@ -48,5 +48,9 @@ orderSchema.set('toJSON', {
   }
 }); 
 
+orderSchema.index({ user_id: 1 }); 
+orderSchema.index({ customer_id: 1 }); 
+orderSchema.index({ page_id: 1 }); 
+
 const Order = mongoose.model('Orders', orderSchema);
 module.exports = Order;

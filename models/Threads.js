@@ -10,7 +10,9 @@ const threadSchema = new mongoose.Schema({
   participants: {},
   user: {},
   updated_time: String,
-  avatar: String
+  avatar: String,
+  next_paging: {},
+  last_paging: {}
 }, { timestamps: false });
 
 threadSchema.set('toJSON', {
@@ -19,6 +21,9 @@ threadSchema.set('toJSON', {
       delete ret._id;
   }
 }); 
+
+threadSchema.index({ page_id: 1 }); 
+threadSchema.index({ customer_id: 1 }); 
 
 const Thread = mongoose.model('Threads', threadSchema);
 module.exports = Thread;

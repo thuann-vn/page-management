@@ -21,6 +21,8 @@ pageSchema.set('toJSON', {
   }
 }); 
 
+pageSchema.index({ user_id: 1 }); 
+
 const Page = mongoose.model('Pages', pageSchema);
 
 module.exports = Page;
