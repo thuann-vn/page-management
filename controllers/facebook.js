@@ -213,6 +213,9 @@ exports.messages = async (req, res, next) => {
   const page = req.query.page || 1;
   const pageSize = 30;
 
+  if(!customerId){
+    res.json({ data: [], total: total, message: 'Please pass customer id' });
+  }
   // Try to get from database
   try {
     var conditions = { customer_id: customerId };
