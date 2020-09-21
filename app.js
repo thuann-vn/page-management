@@ -215,5 +215,5 @@ var server = app.listen(app.get('port'), () => {
   console.log('  Press CTRL-C to stop\n');
 });
 
-server.timeout = 255;
+server.timeout = 0;
 module.exports = app;

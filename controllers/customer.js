@@ -15,7 +15,7 @@ exports.getCustomer = async (req, res) => {
   const tagIds = customer.tags || [];
   if (tagIds && tagIds.length) {
     const tags = await Tag.find({ user_id: mongoose.Types.ObjectId(req.user.id), _id: { $in: tagIds } }).sort({ createdAt: 1 }).exec();
-    result.tags = customer;
+    result.tags = tags;
   }
 
   //Get activities

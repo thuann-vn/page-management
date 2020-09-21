@@ -152,10 +152,10 @@ exports.getPostAndComments = async (page, userId) => {
 exports.getThreadAndMessages = async (page, userId, isFetchMessage = true) => {
   graph.setAccessToken(page.access_token);
   const conversations = await this.getConversations(page._id);
-  console.log('Is Fetch message', isFetchMessage)
   if (conversations) {
     for (var i = 0; i < conversations.length; i++) {
       var threadData = conversations[i];
+      console.log(threadData);
       //Create customer first
       const threadUser = threadData.participants.data[0];
       const avatar = await this.getThreadAvatar(threadUser.id);
@@ -179,21 +179,19 @@ exports.getThreadAndMessages = async (page, userId, isFetchMessage = true) => {
       threadData.avatar = avatar;
       threadData.page_id = page._id;
       threadData.customer_id = customerData._id;
-      Thread.findById(threadData._id, function (err, data) {
-        if (!err && data) {
-          if (data.avatar != avatar || data.snippet != threadData.snippet || data.updated_time != threadData.updated_time) {
-            data.page_id = page._id;
-            data.avatar = avatar;
-            data.snippet = threadData.snippet;
-            data.updated_time = threadData.updated_time;
-            data.save();
-          }
-        } else {
-          Thread.create(threadData, function (err, data) {
-            threadData = data;
-          });
+      
+      var existedThread = await Thread.findById(threadData._id);
+      if (existedThread) {
+        if (existedThread.avatar != avatar || existedThread.snippet != threadData.snippet || existedThread.updated_time != threadData.updated_time) {
+          existedThread.page_id = page._id;
+          existedThread.avatar = avatar;
+          existedThread.snippet = threadData.snippet;
+          existedThread.updated_time = threadData.updated_time;
+          existedThread.save();
         }
-      })
+      } else {
+        threadData = await Thread.create(threadData);
+      }
 
       //Sync message 
       if (isFetchMessage) {
