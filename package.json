@@ -80,7 +80,7 @@
     "popper.js": "^1.16.1",
     "pug": "^3.0.0",
     "pusher": "^3.0.1",
-    "redis": "^3.0.2",
+    "redis": "^3.1.1",
     "response-time": "^2.3.2",
     "stripe": "^8.69.0",
     "tumblr.js": "^2.0.2",
