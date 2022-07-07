@@ -54,7 +54,7 @@
     "lodash": "^4.17.19",
     "lusca": "^1.6.1",
     "mailchecker": "^3.3.9",
-    "moment": "^2.27.0",
+    "moment": "^2.29.4",
     "mongoose": "^5.9.22",
     "morgan": "^1.10.0",
     "multer": "^1.4.2",
