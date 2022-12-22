@@ -48,7 +48,7 @@
     "instagram-node": "^0.5.8",
     "jquery": "^3.5.1",
     "jquery.easing": "^1.4.1",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "lastfm": "^0.9.3",
     "lob": "^6.1.0",
     "lodash": "^4.17.19",
